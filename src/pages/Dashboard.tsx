@@ -55,9 +55,10 @@ export function Dashboard() {
             action={<Button variant="primary" onClick={() => navigate('/students')}><Plus size={16} />Add student</Button>}
           />
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          // minmax(0,1fr): a plain 1fr track grows to its content, so one long project name pushed the page wider than the screen.
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {data.students.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 rounded-lg border border-line bg-surface p-3">
+              <li key={s.id} className="flex min-w-0 items-center gap-3 rounded-lg border border-line bg-surface p-3">
                 <Avatar name={s.firstName} />
                 <a href={`#/students/${s.id}`} className="min-w-0 flex-1">
                   <p className="font-semibold">{s.firstName}</p>
