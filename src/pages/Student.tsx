@@ -97,7 +97,8 @@ export function StudentPage({ id }: { id: string }) {
                 const count = allLessons.filter((l) => l.projectId === p.id).length
                 return (
                   <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface p-4">
-                    <div className="min-w-0 flex-1">
+                    {/* min-w-full on phones puts the buttons on their own row instead of squeezing the name. */}
+                    <div className="min-w-full flex-1 sm:min-w-0">
                       <p className="font-semibold">{p.name}</p>
                       <p className="text-sm text-muted">
                         {[p.language, `${count} ${count === 1 ? 'lesson' : 'lessons'}`, p.status === 'done' ? 'Finished' : 'In progress'].filter(Boolean).join(' · ')}
