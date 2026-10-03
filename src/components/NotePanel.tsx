@@ -149,7 +149,7 @@ export function NotePanel({
           </div>
           {s.stale && (
             <div role="status" className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-hilite bg-hilite-soft px-3 py-2 text-sm">
-              <span className="flex-1">The lesson changed since you edited this section.</span>
+              <span className="basis-full flex-1 sm:basis-0">The lesson changed since you edited this section.</span>
               <Button onClick={() => reset(s)} disabled={busy}>Use updated draft</Button>
               <Button variant="ghost" onClick={() => keepMine(s)} disabled={busy}>Keep mine</Button>
             </div>
