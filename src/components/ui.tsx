@@ -1,6 +1,6 @@
 import * as RDialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import { useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 
 type Variant = 'primary' | 'outline' | 'ghost' | 'danger'
 
@@ -68,11 +68,21 @@ export function Dialog({
   children: ReactNode
   wide?: boolean
 }) {
+  // These dialogs are opened by state, not a Radix Trigger, so Radix has nothing to return focus to. Remember
+  // whatever had focus when the dialog opened and put focus back there when it closes.
+  const opener = useRef<HTMLElement | null>(null)
   return (
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
       <RDialog.Portal>
         <RDialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
         <RDialog.Content
+          onOpenAutoFocus={() => {
+            opener.current = document.activeElement as HTMLElement | null
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault()
+            opener.current?.focus()
+          }}
           {...(description ? {} : { 'aria-describedby': undefined })}
           className={`fixed z-50 flex max-h-[92dvh] flex-col overflow-hidden border border-line bg-surface shadow-[0_8px_24px_rgb(0_0_0/0.12)] max-md:inset-x-0 max-md:bottom-0 max-md:rounded-t-lg max-md:pb-[env(safe-area-inset-bottom)] md:left-1/2 md:top-1/2 md:w-[calc(100%-2rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg ${wide ? 'md:max-w-3xl' : 'md:max-w-md'}`}
         >
