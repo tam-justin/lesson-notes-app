@@ -51,6 +51,8 @@ export function NotePanel({
   const canPolish = webgpuAvailable()
   const hasNote = note.some((s) => s.edited) || lesson.noteWritten
   const blanks = blankSections(note)
+  // With every section blank there is nothing to polish (a multi-GB model download), copy, or mark as written.
+  const empty = blanks.length === note.length
 
   const setEdits = (noteEdits: Lesson['noteEdits']) => onChange({ noteEdits })
 
@@ -130,10 +132,16 @@ export function NotePanel({
         <p className="flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2 text-sm text-muted">
           <Lock size={14} aria-hidden /> Private notes are not included. This draft updates as you fill in the lesson.
         </p>
-        {blanks.length > 0 && (
+        {empty ? (
           <p role="status" className="rounded-md border border-hilite bg-hilite-soft px-3 py-2 text-sm">
-            Still blank: {blanks.join(', ')}. You can still copy the note.
+            Nothing to copy yet. Fill in the lesson first, or type in the sections below.
           </p>
+        ) : (
+          blanks.length > 0 && (
+            <p role="status" className="rounded-md border border-hilite bg-hilite-soft px-3 py-2 text-sm">
+              Still blank: {blanks.join(', ')}. You can still copy the note.
+            </p>
+          )
         )}
       </div>
 
@@ -185,7 +193,7 @@ export function NotePanel({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={polish} disabled={busy || !canPolish} variant="primary">
+        <Button onClick={polish} disabled={busy || !canPolish || empty} variant="primary">
           <Sparkles size={16} /> {busy ? 'Polishing…' : 'Polish with AI'}
         </Button>
         <Select
@@ -209,14 +217,20 @@ export function NotePanel({
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Copy note">
           {FORMATS.map(({ f, label }) => (
-            <Button key={f} onClick={() => copy(f)} disabled={busy}>
+            <Button key={f} onClick={() => copy(f)} disabled={busy || empty}>
               {copied === f ? <Check size={16} /> : <Copy size={16} />}
               {copied === f ? 'Copied' : label}
             </Button>
           ))}
         </div>
         <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
-          <input type="checkbox" className="size-4 accent-[var(--ink)]" checked={lesson.noteWritten} onChange={(e) => onChange({ noteWritten: e.target.checked })} />
+          <input
+            type="checkbox"
+            className="size-4 accent-[var(--ink)]"
+            checked={lesson.noteWritten}
+            disabled={empty && !lesson.noteWritten}
+            onChange={(e) => onChange({ noteWritten: e.target.checked })}
+          />
           Mark note as written
         </label>
       </div>

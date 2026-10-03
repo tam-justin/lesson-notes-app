@@ -46,6 +46,20 @@ describe('NotePanel', () => {
     expect(screen.getByRole('button', { name: /Markdown/ })).toBeEnabled()
   })
 
+  it('disables polish, copy and mark-as-written while the whole note is empty, and enables them once there is text', async () => {
+    render(<Harness initial={makeLesson()} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Nothing to copy yet')
+    for (const name of [/Rich text/, /Markdown/, /Plain text/, /Polish with AI/]) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
+    expect(screen.getByRole('checkbox', { name: /Mark note as written/ })).toBeDisabled()
+
+    await userEvent.type(box('Plan for next week'), 'Start levels.')
+    expect(screen.getByRole('button', { name: /Markdown/ })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: /Mark note as written/ })).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Still blank: Warmup, Main activity')
+  })
+
   it('copies the edited text as Markdown', async () => {
     render(<Harness />)
     await userEvent.type(box('Plan for next week'), 'Start levels.')
