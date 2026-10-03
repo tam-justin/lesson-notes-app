@@ -78,8 +78,14 @@ export function StudentPage({ id }: { id: string }) {
             </button>
           ))}
         </nav>
-        {tab !== 'projects' && projects.length > 0 && (
-          <Select aria-label="Filter by project" value={filter} onChange={(e) => setFilter(e.target.value)} className="mb-1 w-auto max-w-full">
+        {/* Kept in the layout (just invisible) on the Projects tab, so the row does not change height between tabs. */}
+        {projects.length > 0 && (
+          <Select
+            aria-label="Filter by project"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className={`mb-1 w-auto max-w-full ${tab === 'projects' ? 'invisible' : ''}`}
+          >
             <option value="">All projects</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
