@@ -63,7 +63,7 @@ export function StudentPage({ id }: { id: string }) {
         <Button variant="danger" onClick={() => setDel(true)}><Trash2 size={16} />Delete</Button>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-line">
+      <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-line">
         <nav aria-label="Student views" className="flex gap-1">
           {(['timeline', 'concepts', 'projects'] as const).map((t) => (
             <button
@@ -77,7 +77,7 @@ export function StudentPage({ id }: { id: string }) {
           ))}
         </nav>
         {tab !== 'projects' && projects.length > 0 && (
-          <Select aria-label="Filter by project" value={filter} onChange={(e) => setFilter(e.target.value)} className="mb-1 w-auto">
+          <Select aria-label="Filter by project" value={filter} onChange={(e) => setFilter(e.target.value)} className="mb-1 w-auto max-w-full">
             <option value="">All projects</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
