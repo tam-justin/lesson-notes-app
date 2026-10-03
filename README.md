@@ -27,7 +27,7 @@ There is no server and no account. Everything is stored in your browser's `local
 - A browser with WebGPU (recent Chrome or Edge). Without it, the template draft still works.
 - A one-time download per model, cached by the browser afterward: Qwen2.5 7B (about 5 GB) or Qwen2.5 3B (about 2.5 GB). The 7B writes clearly better notes (the 3B sometimes drops verbs and rewrites activity names), so it is recommended whenever the GPU reports half-precision support and a 4 GiB buffer limit; otherwise the 3B is. Your own choice, made in the dropdown next to the button, always wins. Keep the dev server on port 4173 so the cache and your data stay put.
 - The model is given the lesson's facts, not the draft prose, and its output is checked: concept names must survive, activity names may only have a one or two letter typo fixed, and invented filler words, stray quoted text and he/she pronouns are rejected. It gets one retry; if the output still fails, that section keeps your draft and you are told which one. The checks cannot catch every error, such as a rating attached to the wrong thing.
-- Small models can still drift from the facts. Always read the result before copying; **Undo polish** restores the previous text, and **Delete note** removes all edits and rebuilds the note from the lesson.
+- Small models can still drift from the facts. Always read the result before copying; **Undo polish** restores the previous text, and **Reset note** removes all edits and rebuilds the note from the lesson (the lesson itself is untouched; use **Delete lesson** to remove a lesson).
 
 ## Development
 

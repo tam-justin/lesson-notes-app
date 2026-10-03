@@ -120,6 +120,7 @@ export function ConfirmDialog({
   description,
   confirmLabel,
   onConfirm,
+  destructive = true,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
@@ -127,6 +128,8 @@ export function ConfirmDialog({
   description: string
   confirmLabel: string
   onConfirm: () => void
+  /** Red styling for actions that lose data for good; pass false for reversible ones such as a reset. */
+  destructive?: boolean
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={title} description={description}>
@@ -134,7 +137,7 @@ export function ConfirmDialog({
         <Button className="flex-1" onClick={() => onOpenChange(false)}>Cancel</Button>
         <Button
           className="flex-1"
-          variant="danger"
+          variant={destructive ? 'danger' : 'primary'}
           onClick={() => {
             onConfirm()
             onOpenChange(false)

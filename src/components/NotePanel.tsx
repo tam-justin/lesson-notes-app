@@ -1,4 +1,4 @@
-import { Check, Copy, Lock, RotateCcw, Sparkles, Trash2, Undo2 } from 'lucide-react'
+import { Check, Copy, Lock, RotateCcw, Sparkles, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import {
   getSavedModelId, loadEngine, MODELS, polishSection, recommendedModelId, setModelId, webgpuAvailable,
@@ -235,16 +235,17 @@ export function NotePanel({
         </label>
       </div>
       {hasNote && (
-        <Button variant="ghost" className="text-danger" disabled={busy} onClick={() => setConfirmReset(true)}>
-          <Trash2 size={16} /> Delete note
+        <Button variant="ghost" disabled={busy} onClick={() => setConfirmReset(true)}>
+          <RotateCcw size={16} /> Reset note
         </Button>
       )}
       <ConfirmDialog
         open={confirmReset}
         onOpenChange={setConfirmReset}
-        title="Delete this note?"
-        description="Your edits and any polished text are removed and the note is rebuilt from the lesson. The lesson itself is not changed."
-        confirmLabel="Delete note"
+        destructive={false}
+        title="Reset this note?"
+        description="Your edits and any polished text are removed, and the note is rebuilt from the lesson. The lesson itself is not changed."
+        confirmLabel="Reset note"
         onConfirm={() => {
           onChange({ noteEdits: {}, noteWritten: false })
           setUndo(null)

@@ -112,26 +112,32 @@ describe('NotePanel', () => {
     expect(latest.noteEdits).toEqual({})
   })
 
-  it('offers Delete note only when there is something to delete, and rebuilds from the lesson', async () => {
+  it('offers Reset note only when there is something to reset, and rebuilds from the lesson', async () => {
     render(<Harness />)
-    expect(screen.queryByRole('button', { name: /Delete note/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Reset note/ })).not.toBeInTheDocument()
 
     await userEvent.type(box('Warmup'), ' Extra.')
     await userEvent.click(screen.getByRole('checkbox', { name: /Mark note as written/ }))
-    await userEvent.click(screen.getByRole('button', { name: /Delete note/ }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete note' }))
+    await userEvent.click(screen.getByRole('button', { name: /Reset note/ }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Reset note' }))
 
     expect(latest.noteEdits).toEqual({})
     expect(latest.noteWritten).toBe(false)
     expect(box('Warmup').value).toContain('Maya worked independently on loops.')
     expect(box('Warmup').value).not.toContain('Extra.')
-    expect(screen.queryByRole('button', { name: /Delete note/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Reset note/ })).not.toBeInTheDocument()
   })
 
-  it('keeps everything when the delete is cancelled', async () => {
+  it('does not style the reset as destructive, since the lesson is untouched', async () => {
     render(<Harness />)
     await userEvent.type(box('Warmup'), ' Extra.')
-    await userEvent.click(screen.getByRole('button', { name: /Delete note/ }))
+    expect(screen.getByRole('button', { name: /Reset note/ }).className).not.toMatch(/text-danger/)
+  })
+
+  it('keeps everything when the reset is cancelled', async () => {
+    render(<Harness />)
+    await userEvent.type(box('Warmup'), ' Extra.')
+    await userEvent.click(screen.getByRole('button', { name: /Reset note/ }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
     expect(box('Warmup').value).toContain('Extra.')
   })
