@@ -52,12 +52,12 @@ export function LessonPage({ id, view }: { id: string; view: 'capture' | 'note' 
             {fmtDate(lesson.date)} · <span className="font-mono">Saved {clock(saved.at)} · stored on this device</span>
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-auto">
-          <label className="col-span-2 block sm:col-span-1">
+        <div className="grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-auto sm:max-w-full sm:min-w-0">
+          <label className="col-span-2 block min-w-0 sm:col-span-1">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-muted">Project</span>
             <Select
               aria-label="Project"
-              className="sm:w-auto sm:min-w-48"
+              className="sm:w-auto sm:min-w-48 sm:max-w-full"
               value={lesson.projectId ?? ''}
               onChange={(e) => (e.target.value === '__new' ? setNewProject(true) : patch({ projectId: e.target.value || null }))}
             >
