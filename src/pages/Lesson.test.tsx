@@ -80,6 +80,34 @@ describe('LessonPage', () => {
     }
   })
 
+  it('folds a long jot list to the newest two, and shows the rest on request', async () => {
+    renderLesson()
+    const input = screen.getByLabelText('Quick jot')
+    for (const t of ['one', 'two', 'three', 'four']) await userEvent.type(input, `${t}{Enter}`)
+    expect(screen.queryByRole('button', { name: /Show/ })).toBeInTheDocument()
+    expect(screen.getByText('four')).toBeInTheDocument()
+    expect(screen.getByText('three')).toBeInTheDocument()
+    expect(screen.queryByText('two')).not.toBeInTheDocument()
+    expect(screen.queryByText('one')).not.toBeInTheDocument()
+
+    const toggle = screen.getByRole('button', { name: 'Show all 4 jots' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(toggle)
+    for (const t of ['one', 'two', 'three', 'four']) expect(screen.getByText(t)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show fewer' })).toHaveAttribute('aria-expanded', 'true')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show fewer' }))
+    expect(screen.queryByText('one')).not.toBeInTheDocument()
+  })
+
+  it('does not show the fold control for two jots or fewer', async () => {
+    renderLesson()
+    const input = screen.getByLabelText('Quick jot')
+    await userEvent.type(input, 'a{Enter}')
+    await userEvent.type(input, 'b{Enter}')
+    expect(screen.queryByRole('button', { name: /Show/ })).not.toBeInTheDocument()
+  })
+
   it('deletes only the chosen jot', async () => {
     renderLesson()
     const input = screen.getByLabelText('Quick jot')

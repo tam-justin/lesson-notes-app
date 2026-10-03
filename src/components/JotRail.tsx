@@ -8,10 +8,15 @@ type Target = 'warmup' | 'main' | 'next'
 
 const TARGET_LABEL: Record<Target, string> = { warmup: 'Warmup', main: 'Main', next: 'Next week' }
 
+const COLLAPSED_COUNT = 2
+
 /** Timestamped one-liners captured during the lesson, which can be sent into a section afterward. */
 export function JotRail({ lesson, patch }: { lesson: Lesson; patch: (p: Partial<Lesson>) => void }) {
   const [text, setText] = useState('')
   const [freshId, setFresh] = useState('')
+  // Newest first. A long list would push the whole lesson form down on a phone, so show a few and fold the rest.
+  const [showAll, setShowAll] = useState(false)
+  const shown = showAll ? lesson.jots : lesson.jots.slice(0, COLLAPSED_COUNT)
 
   const add = () => {
     const t = text.trim()
@@ -44,7 +49,7 @@ export function JotRail({ lesson, patch }: { lesson: Lesson; patch: (p: Partial<
       />
       <p className="mt-1 text-xs text-muted">Press Enter to add it with the time.</p>
       <ul className="mt-3 space-y-2" aria-live="polite">
-        {lesson.jots.map((j) => (
+        {shown.map((j) => (
           <li key={j.id} className={`rounded-md border border-line p-2.5 text-sm ${j.id === freshId ? 'jot-new' : ''}`}>
             <p><span className="mr-2 font-mono text-xs text-muted">{clock(j.at)}</span>{j.text}</p>
             <div className="mt-1.5 flex flex-wrap gap-1 text-xs">
@@ -69,6 +74,15 @@ export function JotRail({ lesson, patch }: { lesson: Lesson; patch: (p: Partial<
           </li>
         ))}
       </ul>
+      {lesson.jots.length > COLLAPSED_COUNT && (
+        <button
+          aria-expanded={showAll}
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline-offset-4 hover:underline md:min-h-9"
+        >
+          {showAll ? 'Show fewer' : `Show all ${lesson.jots.length} jots`}
+        </button>
+      )}
     </section>
   )
 }
