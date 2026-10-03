@@ -193,7 +193,7 @@ export function NotePanel({
           value={modelId}
           disabled={busy || !canPolish}
           onChange={(e) => (setChosen(e.target.value), setModelId(e.target.value))}
-          className="w-auto"
+          className="w-auto min-w-0 max-w-full"
         >
           {MODELS.map((m) => (
             <option key={m.id} value={m.id}>{m.label}{m.id === recommended ? ' (recommended)' : ''}</option>

@@ -2,8 +2,8 @@ import type { MLCEngineInterface } from '@mlc-ai/web-llm'
 import { checkPolish, EXAMPLES, factsMessage, SYSTEM } from './polish'
 
 export const MODELS = [
-  { id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', label: 'Standard: Qwen2.5 3B (about 2.5 GB)' },
-  { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', label: 'Higher quality: Qwen2.5 7B (about 5 GB)' },
+  { id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', label: 'Standard (3B, 2.5 GB)' },
+  { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', label: 'Higher quality (7B, 5 GB)' },
 ] as const
 
 const STANDARD = MODELS[0].id
