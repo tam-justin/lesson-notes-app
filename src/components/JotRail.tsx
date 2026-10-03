@@ -49,11 +49,20 @@ export function JotRail({ lesson, patch }: { lesson: Lesson; patch: (p: Partial<
             <p><span className="mr-2 font-mono text-xs text-muted">{clock(j.at)}</span>{j.text}</p>
             <div className="mt-1.5 flex flex-wrap gap-1 text-xs">
               {(['warmup', 'main', 'next'] as const).map((t) => (
-                <button key={t} className="min-h-11 rounded-sm px-3 font-medium text-muted hover:bg-surface-2 hover:text-fg md:min-h-8 md:px-2" onClick={() => send(j.id, t)}>
+                <button
+                  key={t}
+                  aria-label={`Send "${j.text}" to ${TARGET_LABEL[t]}`}
+                  className="min-h-11 rounded-sm px-3 font-medium text-muted hover:bg-surface-2 hover:text-fg md:min-h-8 md:px-2"
+                  onClick={() => send(j.id, t)}
+                >
                   → {TARGET_LABEL[t]}
                 </button>
               ))}
-              <button className="ml-auto min-h-11 rounded-sm px-3 text-muted hover:bg-surface-2 hover:text-danger md:min-h-8 md:px-2" onClick={() => patch({ jots: lesson.jots.filter((x) => x.id !== j.id) })}>
+              <button
+                aria-label={`Delete jot "${j.text}"`}
+                className="ml-auto min-h-11 rounded-sm px-3 text-muted hover:bg-surface-2 hover:text-danger md:min-h-8 md:px-2"
+                onClick={() => patch({ jots: lesson.jots.filter((x) => x.id !== j.id) })}
+              >
                 Delete
               </button>
             </div>

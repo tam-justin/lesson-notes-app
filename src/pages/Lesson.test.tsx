@@ -62,9 +62,32 @@ describe('LessonPage', () => {
   it('sends a jot into a section and removes it from the list', async () => {
     renderLesson()
     await userEvent.type(screen.getByLabelText('Quick jot'), 'finished fast{Enter}')
-    await userEvent.click(screen.getByRole('button', { name: '→ Warmup' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Send "finished fast" to Warmup' }))
     expect(screen.getByPlaceholderText(/Did they struggle/)).toHaveValue('finished fast')
-    expect(screen.queryByRole('button', { name: '→ Warmup' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Send "finished fast"/ })).not.toBeInTheDocument()
+  })
+
+  it('names each jot button after the jot it acts on, so a screen reader can tell them apart', async () => {
+    renderLesson()
+    const input = screen.getByLabelText('Quick jot')
+    await userEvent.type(input, 'first idea{Enter}')
+    await userEvent.type(input, 'second idea{Enter}')
+    for (const text of ['first idea', 'second idea']) {
+      for (const target of ['Warmup', 'Main', 'Next week']) {
+        expect(screen.getByRole('button', { name: `Send "${text}" to ${target}` })).toBeInTheDocument()
+      }
+      expect(screen.getByRole('button', { name: `Delete jot "${text}"` })).toBeInTheDocument()
+    }
+  })
+
+  it('deletes only the chosen jot', async () => {
+    renderLesson()
+    const input = screen.getByLabelText('Quick jot')
+    await userEvent.type(input, 'keep me{Enter}')
+    await userEvent.type(input, 'drop me{Enter}')
+    await userEvent.click(screen.getByRole('button', { name: 'Delete jot "drop me"' }))
+    expect(screen.queryByText('drop me')).not.toBeInTheDocument()
+    expect(screen.getByText('keep me')).toBeInTheDocument()
   })
 
   it('lets you pick between the student’s projects', async () => {
