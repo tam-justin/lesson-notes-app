@@ -1,5 +1,7 @@
 import { ArrowRight, Plus } from 'lucide-react'
+import { useState } from 'react'
 import { Button, EmptyState, PageHeader, Avatar } from '../components/ui'
+import { needsBackup } from '../lib/backup'
 import { fmtDate } from '../lib/format'
 import { navigate } from '../lib/router'
 import { usePageTitle } from '../lib/title'
@@ -12,10 +14,25 @@ export function Dashboard() {
   const name = (id: string) => data.students.find((s) => s.id === id)
 
   const start = (studentId: string) => navigate(`/lessons/${createLesson(studentId)}`)
+  const [now] = useState(Date.now)
+  const remindBackup = needsBackup(data, now)
 
   return (
     <>
       <PageHeader title="Dashboard" sub="Capture during the lesson. The parent note writes itself as you go." />
+
+      {remindBackup && (
+        <div role="status" className="mb-8 flex flex-wrap items-center gap-3 rounded-lg border border-hilite bg-hilite-soft px-4 py-3 text-sm">
+          <span className="flex-1 basis-60">
+            {data.lastBackup === null
+              ? 'Your notes are saved only in this browser, and you have not made a backup yet.'
+              : `Your last backup was ${fmtDate(new Date(data.lastBackup).toLocaleDateString('en-CA'))}.`}
+          </span>
+          <a href="#/settings" className="inline-flex h-11 items-center rounded-md bg-ink px-3.5 font-semibold text-on-ink hover:opacity-90 md:h-10">
+            Back up now
+          </a>
+        </div>
+      )}
 
       <section aria-labelledby="pending" className="mb-10">
         <h2 id="pending" className="mb-3 text-xl font-semibold">Notes to write</h2>
