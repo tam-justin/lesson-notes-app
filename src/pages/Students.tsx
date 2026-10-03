@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar, Button, Dialog, EmptyState, Field, Input, PageHeader } from '../components/ui'
 import { navigate } from '../lib/router'
+import { usePageTitle } from '../lib/title'
 import { useStore } from '../store'
 
 export function StudentForm({
@@ -31,6 +32,7 @@ export function StudentForm({
 }
 
 export function StudentsPage() {
+  usePageTitle('Students')
   const { data, addStudent } = useStore()
   const [open, setOpen] = useState(false)
   const add = (

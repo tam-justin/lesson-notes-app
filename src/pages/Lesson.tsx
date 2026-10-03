@@ -8,6 +8,7 @@ import { ProjectDialog } from '../components/ProjectDialog'
 import { Button, ConfirmDialog, EmptyState, Input, Select, Textarea } from '../components/ui'
 import { clock, fmtDate } from '../lib/format'
 import { navigate } from '../lib/router'
+import { usePageTitle } from '../lib/title'
 import { useStore } from '../store'
 import type { Lesson } from '../types'
 
@@ -17,6 +18,7 @@ export function LessonPage({ id, view }: { id: string; view: 'capture' | 'note' 
   const student = data.students.find((s) => s.id === lesson?.studentId)
   const [newProject, setNewProject] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  usePageTitle(lesson && student ? `${student.firstName} · Lesson ${fmtDate(lesson.date)}${view === 'note' ? ' · Note' : ''}` : 'Lesson')
 
   if (!lesson || !student)
     return <EmptyState title="Lesson not found" body="It may have been deleted." action={<Button onClick={() => navigate('/')}>Back to dashboard</Button>} />

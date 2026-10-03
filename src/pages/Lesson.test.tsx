@@ -100,6 +100,15 @@ describe('LessonPage', () => {
     expect(JSON.parse(localStorage.getItem('lesson-notes:v1')!).lessons).toHaveLength(0)
   })
 
+  it('sets the browser title to the student, lesson date and tab', () => {
+    const { unmount } = renderLesson()
+    expect(document.title).toMatch(/^Maya · Lesson .* · Lesson Notes$/)
+    expect(document.title).not.toContain('Note ·')
+    unmount()
+    renderLesson('note')
+    expect(document.title).toMatch(/^Maya · Lesson .* · Note · Lesson Notes$/)
+  })
+
   it('renders the full note editor on the Note tab', async () => {
     renderLesson('note')
     expect(screen.getByLabelText('Warmup')).toBeInTheDocument()

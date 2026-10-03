@@ -5,6 +5,7 @@ import { Glyph, RatingChip } from '../components/Rating'
 import { Avatar, Button, ConfirmDialog, Dialog, EmptyState, PageHeader, Select } from '../components/ui'
 import { fmtDate } from '../lib/format'
 import { navigate } from '../lib/router'
+import { usePageTitle } from '../lib/title'
 import { useStore } from '../store'
 import { RATING_LABELS, type Project, type Rating } from '../types'
 import { StudentForm } from './Students'
@@ -14,6 +15,7 @@ type Tab = 'timeline' | 'concepts' | 'projects'
 export function StudentPage({ id }: { id: string }) {
   const { data, updateStudent, deleteStudent, addProject, updateProject, deleteProject, createLesson } = useStore()
   const student = data.students.find((s) => s.id === id)
+  usePageTitle(student?.firstName ?? 'Student')
   const [tab, setTab] = useState<Tab>('timeline')
   const [filter, setFilter] = useState('')
   const [edit, setEdit] = useState(false)

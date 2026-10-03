@@ -2,6 +2,7 @@ import { Download, Monitor, Moon, Sun, Upload, type LucideIcon } from 'lucide-re
 import { useRef, useState } from 'react'
 import { Button, ConfirmDialog, PageHeader } from '../components/ui'
 import { migrate } from '../lib/migrate'
+import { usePageTitle } from '../lib/title'
 import { useStore } from '../store'
 import type { AppData, Theme } from '../types'
 
@@ -12,6 +13,7 @@ const THEMES: { value: Theme; label: string; icon: LucideIcon }[] = [
 ]
 
 export function SettingsPage() {
+  usePageTitle('Settings')
   const { data, setTheme, importData, markBackup } = useStore()
   const file = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState('')

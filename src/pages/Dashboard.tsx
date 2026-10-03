@@ -2,9 +2,11 @@ import { ArrowRight, Plus } from 'lucide-react'
 import { Button, EmptyState, PageHeader, Avatar } from '../components/ui'
 import { fmtDate } from '../lib/format'
 import { navigate } from '../lib/router'
+import { usePageTitle } from '../lib/title'
 import { useStore } from '../store'
 
 export function Dashboard() {
+  usePageTitle('Dashboard')
   const { data, createLesson } = useStore()
   const pending = data.lessons.filter((l) => !l.noteWritten).sort((a, b) => b.date.localeCompare(a.date))
   const name = (id: string) => data.students.find((s) => s.id === id)
