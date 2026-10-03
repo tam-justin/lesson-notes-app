@@ -107,6 +107,10 @@ h1, h2, h3 {
   .fill {
     width: 100%;
   }
+  /* The default height of a multi-line box; callers can shrink it with a min-h-* class. */
+  .area {
+    min-height: 6rem;
+  }
 }
 
 .hatch {

@@ -29,6 +29,16 @@ describe('ConceptEditor', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 
+  it('uses a wrapping, auto-sizing box for the detail, and keeps it on one logical line', async () => {
+    let latest: ConceptEntry[] = []
+    render(<Harness onChange={(c) => (latest = c)} />)
+    await userEvent.type(screen.getByPlaceholderText(/Add a concept/), 'lists{Enter}')
+    const detail = screen.getByLabelText('Detail for lists')
+    expect(detail.tagName).toBe('TEXTAREA')
+    await userEvent.type(detail, 'first part{Enter}second part')
+    expect(latest[0].comment).toBe('first partsecond part')
+  })
+
   it('changes rating, stores a comment, and removes', async () => {
     let latest: ConceptEntry[] = []
     render(<Harness onChange={(c) => (latest = c)} />)

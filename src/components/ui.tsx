@@ -40,7 +40,7 @@ export function Select(p: SelectHTMLAttributes<HTMLSelectElement>) {
 }
 
 export function Textarea(p: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...p} className={`fill ${field} min-h-24 resize-y leading-relaxed ${p.className ?? ''}`} />
+  return <textarea {...p} className={`fill area ${field} resize-y leading-relaxed ${p.className ?? ''}`} />
 }
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {

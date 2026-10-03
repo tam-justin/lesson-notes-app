@@ -4,7 +4,7 @@ import { uid } from '../lib/ids'
 import { useStore } from '../store'
 import type { ConceptEntry } from '../types'
 import { RatingPicker } from './Rating'
-import { Button, Input } from './ui'
+import { Button, Input, Textarea } from './ui'
 
 export function ConceptEditor({
   concepts,
@@ -67,12 +67,15 @@ export function ConceptEditor({
                 </button>
               </div>
               <RatingPicker label={`How ${c.name} went`} value={c.rating} onChange={(rating) => patch(c.id, { rating })} />
-              <Input
-                className="mt-2"
+              {/* A one-line box that grows with its text, so a long detail wraps instead of being cut off. */}
+              <Textarea
+                rows={1}
+                className="field-sizing-content mt-2 min-h-11 resize-none md:min-h-10"
                 value={c.comment}
                 placeholder="Optional detail"
                 aria-label={`Detail for ${c.name}`}
                 onChange={(e) => patch(c.id, { comment: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
               />
             </li>
           ))}
