@@ -15,7 +15,7 @@ const sentence = (s: string) => {
 }
 
 const PHRASE: Record<Rating, (c: string) => string> = {
-  4: (c) => `breezed through ${c}`,
+  4: (c) => `did great and breezed through ${c}`,
   3: (c) => `worked independently on ${c}`,
   2: (c) => `needed some support with ${c}`,
   1: (c) => `found ${c} challenging and needed significant guidance`,
@@ -44,15 +44,15 @@ function activityParts(first: string, a: Activity) {
 
 function activityText(first: string, a: Activity, lead: string) {
   const p = activityParts(first, a)
-  return [
+  const summary = [
     p.name && `${lead} "${p.name}".`,
-    p.concepts.length && `This activity covered ${list(p.concepts)}.`,
+    p.concepts.length && `${p.name ? 'It' : 'This activity'} covered ${list(p.concepts)}.`,
     p.rating,
     ...p.comments.map((c) => `On ${c.concept}: ${sentence(c.text)}`),
-    p.details && sentence(p.details),
   ]
     .filter(Boolean)
     .join(' ')
+  return [summary, p.details && sentence(p.details)].filter(Boolean).join('\n\n')
 }
 
 /** The raw facts behind a section, one per line, for the AI to turn into prose. */
@@ -80,8 +80,8 @@ export function requiredTerms(lesson: Lesson, heading: string): string[] {
 export function templateNote(student: Pick<Student, 'firstName'>, lesson: Lesson): NoteSection[] {
   const first = student.firstName
   return [
-    { heading: 'Warmup', body: activityText(first, lesson.warmup, 'We started with the warmup activity') },
-    { heading: 'Main activity', body: activityText(first, lesson.main, 'For the main activity, we worked on') },
+    { heading: 'Warmup', body: activityText(first, lesson.warmup, 'For the warmup, we worked on') },
+    { heading: 'Main activity', body: activityText(first, lesson.main, 'For our main activity, we worked on') },
     { heading: 'Plan for next week', body: lesson.nextPlan.trim() ? sentence(lesson.nextPlan) : '' },
   ]
 }

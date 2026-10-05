@@ -21,19 +21,19 @@ describe('templateNote', () => {
   })
 
   it('uses the first name and "we" voice', () => {
-    expect(note[0].body).toContain('We started with the warmup activity "Fix the maze".')
-    expect(note[0].body).toContain('Maya breezed through variables and worked independently on loops.')
+    expect(note[0].body).toContain('For the warmup, we worked on "Fix the maze".')
+    expect(note[0].body).toContain('Maya did great and breezed through variables and worked independently on loops.')
   })
 
   it('groups concepts by rating, best first, with an Oxford comma', () => {
-    expect(note[1].body).toContain('This activity covered functions, conditionals, and lists.')
+    expect(note[1].body).toContain('For our main activity, we worked on "Enemy spawning". It covered functions, conditionals, and lists.')
     expect(note[1].body).toContain(
       'Maya worked independently on lists, needed some support with conditionals, and found functions challenging and needed significant guidance.',
     )
   })
 
   it('capitalizes and punctuates free text', () => {
-    expect(note[0].body).toContain('She finished quickly.')
+    expect(note[0].body).toMatch(/\n\nShe finished quickly\.$/)
     expect(note[2].body).toBe('Finish scoring and start on levels.')
   })
 
@@ -72,7 +72,7 @@ describe('resolveNote', () => {
   })
 
   it('includes main-activity concepts in the live note', () => {
-    expect(resolveNote(student(), withMain)[1].body).toContain('This activity covered loops.')
+    expect(resolveNote(student(), withMain)[1].body).toContain('It covered loops.')
   })
 
   it('uses an override as the text and flags it stale when the lesson changes afterward', () => {
