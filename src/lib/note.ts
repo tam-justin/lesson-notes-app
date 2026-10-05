@@ -114,9 +114,6 @@ export const blankSections =(note: NoteSection[]) => note.filter((s) => !s.body.
 export const toPlain = (note: NoteSection[]) =>
   note.filter((s) => s.body.trim()).map((s) => `${s.heading}\n${s.body.trim()}`).join('\n\n')
 
-export const toMarkdown = (note: NoteSection[]) =>
-  note.filter((s) => s.body.trim()).map((s) => `## ${s.heading}\n\n${s.body.trim()}`).join('\n\n')
-
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export const toHtml = (note: NoteSection[]) =>

@@ -43,29 +43,29 @@ describe('NotePanel', () => {
   it('warns about blank sections but still allows copying', () => {
     render(<Harness />)
     expect(screen.getByRole('status')).toHaveTextContent('Still blank: Main activity, Plan for next week')
-    expect(screen.getByRole('button', { name: /Markdown/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Plain text/ })).toBeEnabled()
   })
 
   it('disables polish, copy and mark-as-written while the whole note is empty, and enables them once there is text', async () => {
     render(<Harness initial={makeLesson()} />)
     expect(screen.getByRole('status')).toHaveTextContent('Nothing to copy yet')
-    for (const name of [/Rich text/, /Markdown/, /Plain text/, /Polish with AI/]) {
+    for (const name of [/Rich text/, /Plain text/, /Polish with AI/]) {
       expect(screen.getByRole('button', { name })).toBeDisabled()
     }
     expect(screen.getByRole('checkbox', { name: /Mark note as written/ })).toBeDisabled()
 
     await userEvent.type(box('Plan for next week'), 'Start levels.')
-    expect(screen.getByRole('button', { name: /Markdown/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Plain text/ })).toBeEnabled()
     expect(screen.getByRole('checkbox', { name: /Mark note as written/ })).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('Still blank: Warmup, Main activity')
   })
 
-  it('copies the edited text as Markdown', async () => {
+  it('copies the edited text as plain text', async () => {
     render(<Harness />)
     await userEvent.type(box('Plan for next week'), 'Start levels.')
-    await userEvent.click(screen.getByRole('button', { name: /Markdown/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Plain text/ }))
     const text = writeText.mock.calls[0][0] as string
-    expect(text).toContain('## Plan for next week\n\nStart levels.')
+    expect(text).toContain('Plan for next week\nStart levels.')
     expect(text).not.toContain('PRIVATE-TEXT')
     expect(await screen.findByRole('button', { name: /Copied/ })).toBeInTheDocument()
   })

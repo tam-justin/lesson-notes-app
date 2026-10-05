@@ -4,16 +4,15 @@ import {
   getSavedModelId, loadEngine, MODELS, polishSection, recommendedModelId, setModelId, webgpuAvailable,
 } from '../lib/llm'
 import {
-  blankSections, requiredTerms, resolveNote, sectionFacts, toHtml, toMarkdown, toPlain, type ResolvedSection,
+  blankSections, requiredTerms, resolveNote, sectionFacts, toHtml, toPlain, type ResolvedSection,
 } from '../lib/note'
 import type { Lesson, NoteEdit, Student } from '../types'
 import { Button, ConfirmDialog, Select, Textarea } from './ui'
 
-type Format = 'rich' | 'markdown' | 'plain'
+type Format = 'rich' | 'plain'
 
 const FORMATS: { f: Format; label: string }[] = [
   { f: 'rich', label: 'Rich text' },
-  { f: 'markdown', label: 'Markdown' },
   { f: 'plain', label: 'Plain text' },
 ]
 
@@ -82,7 +81,7 @@ export function NotePanel({
           }),
         ])
       } else {
-        await navigator.clipboard.writeText(f === 'markdown' ? toMarkdown(note) : toPlain(note))
+        await navigator.clipboard.writeText(toPlain(note))
       }
       setError('')
       setCopied(f)

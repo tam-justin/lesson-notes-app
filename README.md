@@ -9,7 +9,7 @@ A small local-first web app for writing up coding lesson notes. Capture what hap
 - **Quick jots**: timestamped one-liners during the lesson, which you can send to a section afterward.
 - **Private notes**: optional, shown on a separate hatched surface, and never included in the generated note.
 - **Live note**: the parent-facing note is always generated from the lesson in a formal "we" voice, and a live summary sits beside the lesson form. There is no separate "generate" step. If you edit a section by hand, your text is kept; if the lesson changes afterward, that section shows a notice with *Use updated draft* or *Keep mine*.
-- **Polish with AI**: an optional button that rewrites each section with a small model running entirely in your browser ([WebLLM](https://github.com/mlc-ai/web-llm), Qwen2.5-3B). Copy the result as rich text, Markdown, or plain text.
+- **Polish with AI**: an optional button that rewrites each section with a small model running entirely in your browser ([WebLLM](https://github.com/mlc-ai/web-llm), Qwen2.5-3B). Copy the result as rich text or plain text.
 - **Concept progress**: a per-student grid of ratings over the last six lessons.
 - **Dashboard**: lessons whose notes still need writing.
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { concept, lesson, student } from '../test/factories'
-import { blankSections, resolveNote, templateNote, toHtml, toMarkdown, toPlain } from './note'
+import { blankSections, resolveNote, templateNote, toHtml, toPlain } from './note'
 
 const full = lesson({
   warmup: { name: 'Fix the maze', concepts: [concept('variables', 4), concept('loops', 3)], details: 'she finished quickly' },
@@ -99,7 +99,6 @@ describe('formatters', () => {
 
   it('skips blank sections', () => {
     expect(toPlain(note)).toBe('Warmup\nLine one.\n\nLine <two> & more.\n\nPlan\nNext.')
-    expect(toMarkdown(note)).toBe('## Warmup\n\nLine one.\n\nLine <two> & more.\n\n## Plan\n\nNext.')
   })
 
   it('escapes HTML and splits paragraphs', () => {
