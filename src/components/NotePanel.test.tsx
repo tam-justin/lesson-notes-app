@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { concept, lesson as makeLesson, student } from '../test/factories'
 import type { Lesson } from '../types'
+import { LOW_MEMORY_NOTE } from '../lib/llm'
 import { NotePanel } from './NotePanel'
 
 const base = makeLesson({
@@ -142,18 +143,43 @@ describe('NotePanel', () => {
     expect(box('Warmup').value).toContain('Extra.')
   })
 
-  it('an explicit model choice wins over the recommendation', () => {
-    localStorage.setItem('lesson-notes:model', 'Qwen2.5-7B-Instruct-q4f16_1-MLC')
+  it('an explicit model choice wins over the default', () => {
+    localStorage.setItem('lesson-notes:model', 'Llama-3.1-8B-Instruct-q4f16_1-MLC')
     render(<Harness />)
-    expect((screen.getByLabelText('AI model') as HTMLSelectElement).value).toBe('Qwen2.5-7B-Instruct-q4f16_1-MLC')
+    expect((screen.getByLabelText('AI model') as HTMLSelectElement).value).toBe('Llama-3.1-8B-Instruct-q4f16_1-MLC')
   })
 
   it('lets you choose the AI model and remembers it', async () => {
     render(<Harness />)
     const select = screen.getByLabelText('AI model') as HTMLSelectElement
-    expect(select.value).toBe('Qwen2.5-3B-Instruct-q4f16_1-MLC')
+    expect(select.value).toBe('Qwen3-8B-q4f16_1-MLC')
     // disabled without WebGPU in jsdom, so check the stored default and option list instead
-    expect([...select.options].map((o) => o.value)).toContain('Qwen2.5-7B-Instruct-q4f16_1-MLC')
+    expect([...select.options].map((o) => o.value)).toContain('Llama-3.1-8B-Instruct-q4f16_1-MLC')
+  })
+
+  describe('with WebGPU', () => {
+    beforeEach(() => {
+      Object.defineProperty(navigator, 'gpu', { value: { requestAdapter: async () => null }, configurable: true })
+      return () => void Reflect.deleteProperty(navigator, 'gpu')
+    })
+
+    it('explains the trade-off only when the low-memory model is selected', async () => {
+      localStorage.setItem('lesson-notes:model', 'Qwen2.5-3B-Instruct-q4f16_1-MLC')
+      const { unmount } = render(<Harness />)
+      expect(await screen.findByText(LOW_MEMORY_NOTE)).toBeInTheDocument()
+      unmount()
+
+      localStorage.setItem('lesson-notes:model', 'Qwen3-8B-q4f16_1-MLC')
+      render(<Harness />)
+      expect(screen.getByLabelText('AI model')).toBeEnabled()
+      expect(screen.queryByText(LOW_MEMORY_NOTE)).not.toBeInTheDocument()
+    })
+
+    it('defaults to the low-memory model when no GPU adapter is available', async () => {
+      render(<Harness />)
+      const select = screen.getByLabelText('AI model') as HTMLSelectElement
+      await vi.waitFor(() => expect(select.value).toBe('Qwen2.5-3B-Instruct-q4f16_1-MLC'))
+    })
   })
 
   it('disables AI polish without WebGPU and explains why', () => {

@@ -98,6 +98,11 @@ describe('polishSection', () => {
     expect(sent.messages.at(-1).content).toContain('- Activity: "Tic Tac Toe Game"')
   })
 
+  it('strips an empty thinking block some models prepend', async () => {
+    const { engine } = fakeEngine([`<think>\n\n</think>\n\n${good}`])
+    expect((await polishSection(engine, input)).text).toBe(good)
+  })
+
   it('retries once, telling the model what was wrong', async () => {
     const { engine, create } = fakeEngine(['He built a board.', good])
     const r = await polishSection(engine, input)

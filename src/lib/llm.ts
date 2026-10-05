@@ -2,12 +2,21 @@ import type { MLCEngineInterface } from '@mlc-ai/web-llm'
 import { checkPolish, EXAMPLES, factsMessage, SYSTEM } from './polish'
 
 export const MODELS = [
-  { id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', label: 'Standard (3B, 2.5 GB)' },
-  { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', label: 'Higher quality (7B, 5 GB)' },
+  { id: 'Qwen3-8B-q4f16_1-MLC', label: 'Qwen3 8B, 5.7 GB' },
+  { id: 'Llama-3.1-8B-Instruct-q4f16_1-MLC', label: 'Llama 3.1 8B, 5 GB' },
+  { id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', label: 'Low memory (Qwen2.5 3B, 2.5 GB)' },
 ] as const
 
-const STANDARD = MODELS[0].id
-const HIGH_QUALITY = MODELS[1].id
+/** The default on a capable GPU, used until the user picks one. */
+export const DEFAULT_MODEL = MODELS[0].id
+export const LOW_MEMORY_MODEL = MODELS[2].id
+
+/** Shown when the low-memory model is selected. */
+export const LOW_MEMORY_NOTE =
+  'The low-memory model is less accurate: it can drop verbs, reword activity names, or blur ratings. Read each section carefully before copying.'
+
+/** Qwen3 "thinks" aloud by default; the note must contain only the prose. */
+const needsThinkingOff = (modelId: string) => modelId.startsWith('Qwen3')
 
 const MODEL_KEY = 'lesson-notes:model'
 
@@ -32,13 +41,10 @@ const GIB = 1024 ** 3
 /** Real GPUs report their 4 GiB limit a few bytes short (an Apple GPU gives 4294967292), so allow some slack. */
 const MIN_BUFFER = 4 * GIB - 4096
 
-/**
- * The 7B model writes much cleaner notes (the 3B drops verbs and rewrites activity names) but needs about 5 GB of
- * GPU memory. Recommend it only when the GPU reports half-precision support and room for a 4 GiB buffer.
- */
+/** The 8B models need half-precision support and room for a 4 GiB buffer (about 5 GB of GPU memory); otherwise use the 3B. */
 export function modelForAdapter(adapter: AdapterLike | null | undefined): string {
-  if (adapter?.features.has('shader-f16') && adapter.limits.maxBufferSize >= MIN_BUFFER) return HIGH_QUALITY
-  return STANDARD
+  if (adapter?.features.has('shader-f16') && adapter.limits.maxBufferSize >= MIN_BUFFER) return DEFAULT_MODEL
+  return LOW_MEMORY_MODEL
 }
 
 export async function recommendedModelId(): Promise<string> {
@@ -46,7 +52,7 @@ export async function recommendedModelId(): Promise<string> {
     const gpu = (navigator as unknown as { gpu?: { requestAdapter(): Promise<AdapterLike | null> } }).gpu
     return modelForAdapter(await gpu?.requestAdapter())
   } catch {
-    return STANDARD
+    return LOW_MEMORY_MODEL
   }
 }
 
@@ -86,6 +92,8 @@ export interface PolishInput {
   facts: string[]
   /** Terms (concept names) that must survive into the output. */
   required: string[]
+  /** The model in use, for per-model request options. */
+  modelId?: string
 }
 
 export interface PolishResult {
@@ -111,8 +119,14 @@ export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: 
   ]
 
   const ask = async (msgs: Message[]) => {
-    const res = await e.chat.completions.create({ messages: msgs, temperature: 0.2, top_p: 0.9, max_tokens: 300 })
-    return res.choices[0]?.message?.content?.trim() ?? ''
+    const res = await e.chat.completions.create({
+      messages: msgs,
+      temperature: 0.2,
+      top_p: 0.9,
+      max_tokens: 300,
+      ...(input.modelId && needsThinkingOff(input.modelId) ? { extra_body: { enable_thinking: false } } : {}),
+    })
+    return (res.choices[0]?.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim()
   }
 
   let text = await ask(messages)

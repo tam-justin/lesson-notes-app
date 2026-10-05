@@ -1,7 +1,8 @@
 import { Check, Copy, Lock, RotateCcw, Sparkles, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import {
-  getSavedModelId, loadEngine, MODELS, polishSection, recommendedModelId, setModelId, webgpuAvailable,
+  getSavedModelId, loadEngine, LOW_MEMORY_MODEL, LOW_MEMORY_NOTE, MODELS, polishSection, recommendedModelId, setModelId,
+  webgpuAvailable,
 } from '../lib/llm'
 import {
   blankSections, requiredTerms, resolveNote, sectionFacts, toHtml, toPlain, type ResolvedSection,
@@ -107,7 +108,7 @@ export function NotePanel({
         // Work from the lesson's facts. If the section was hand-edited, the edited text is the only fact.
         const facts = s.edited ? [`Instructor's draft: ${s.body.trim()}`] : sectionFacts(student, lesson, s.heading)
         const required = s.edited ? [] : requiredTerms(lesson, s.heading)
-        const result = await polishSection(engine, { student: student.firstName, heading: s.heading, facts, required })
+        const result = await polishSection(engine, { student: student.firstName, heading: s.heading, facts, required, modelId })
         if (result.ok) {
           edits[s.heading] = { text: result.text, baseline: s.generated }
           onChange({ noteEdits: { ...edits } })
@@ -118,7 +119,7 @@ export function NotePanel({
       setKept(rejected)
     } catch (e) {
       setProgress(null)
-      const low = modelId !== MODELS[0].id ? ' If it ran out of memory, switch to the Standard model.' : ''
+      const low = modelId === LOW_MEMORY_MODEL ? '' : ' If it ran out of memory, close other tabs or switch to the low-memory model.'
       setError(`The AI model could not run (${e instanceof Error ? e.message : 'unknown error'}). Your draft is unchanged.${low}`)
     } finally {
       setBusy(false)
@@ -184,7 +185,7 @@ export function NotePanel({
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       {kept.length > 0 && (
         <p role="status" className="rounded-md border border-hilite bg-hilite-soft px-3 py-2 text-sm">
-          The AI changed or dropped details in: {kept.join(', ')}. Those sections kept your draft. Try again, or switch to the higher quality model.
+          The AI changed or dropped details in: {kept.join(', ')}. Those sections kept your draft. Try again{modelId === LOW_MEMORY_MODEL ? ', or switch to a larger model if your device can run one' : ''}.
         </p>
       )}
       {!canPolish && (
@@ -212,6 +213,9 @@ export function NotePanel({
           </Button>
         )}
       </div>
+      {canPolish && modelId === LOW_MEMORY_MODEL && (
+        <p role="note" className="rounded-md border border-hilite bg-hilite-soft px-3 py-2 text-sm">{LOW_MEMORY_NOTE}</p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Copy note">

@@ -9,7 +9,7 @@ A small local-first web app for writing up coding lesson notes. Capture what hap
 - **Quick jots**: timestamped one-liners during the lesson, which you can send to a section afterward.
 - **Private notes**: optional, shown on a separate hatched surface, and never included in the generated note.
 - **Live note**: the parent-facing note is always generated from the lesson in a formal "we" voice, and a live summary sits beside the lesson form. There is no separate "generate" step. If you edit a section by hand, your text is kept; if the lesson changes afterward, that section shows a notice with *Use updated draft* or *Keep mine*.
-- **Polish with AI**: an optional button that rewrites each section with a small model running entirely in your browser ([WebLLM](https://github.com/mlc-ai/web-llm), Qwen2.5-3B). Copy the result as rich text or plain text.
+- **Polish with AI**: an optional button that rewrites each section with a small model running entirely in your browser ([WebLLM](https://github.com/mlc-ai/web-llm), Qwen3 8B, Llama 3.1 8B, or a smaller model for low-memory machines). Copy the result as rich text or plain text.
 - **Concept progress**: a per-student grid of ratings over the last six lessons.
 - **Dashboard**: lessons whose notes still need writing.
 
@@ -25,7 +25,7 @@ There is no server and no account. Everything is stored in your browser's `local
 ## AI polish requirements
 
 - A browser with WebGPU (recent Chrome or Edge). Without it, the template draft still works.
-- A one-time download per model, cached by the browser afterward: Qwen2.5 7B (about 5 GB) or Qwen2.5 3B (about 2.5 GB). The 7B writes clearly better notes (the 3B sometimes drops verbs and rewrites activity names), so it is recommended whenever the GPU reports half-precision support and a 4 GiB buffer limit; otherwise the 3B is. Your own choice, made in the dropdown next to the button, always wins. Keep the dev server on port 4173 so the cache and your data stay put.
+- A one-time download per model, cached by the browser afterward: Qwen3 8B (about 5.7 GB, the default) or Llama 3.1 8B (about 5 GB). Both need roughly 6 GB of free GPU memory. On GPUs without half-precision support or a 4 GiB buffer limit, the app defaults to a low-memory model, Qwen2.5 3B (about 2.5 GB), and shows a note that it is less accurate: it can drop verbs, reword activity names, or blur ratings. In side-by-side tests Qwen3 followed the facts most faithfully; Llama sometimes softened a rating. Your own choice, made in the dropdown next to the button, always wins. Keep the dev server on port 4173 so the cache and your data stay put.
 - The model is given the lesson's facts, not the draft prose, and its output is checked: concept names must survive, activity names may only have a one or two letter typo fixed, and invented filler words, stray quoted text and he/she pronouns are rejected. It gets one retry; if the output still fails, that section keeps your draft and you are told which one. The checks cannot catch every error, such as a rating attached to the wrong thing.
 - Small models can still drift from the facts. Always read the result before copying; **Undo polish** restores the previous text, and **Reset note** removes all edits and rebuilds the note from the lesson (the lesson itself is untouched; use **Delete lesson** to remove a lesson).
 
