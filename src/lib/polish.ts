@@ -25,10 +25,10 @@ export const EXAMPLES: Example[] = [
     facts: [
       'Activity: "reverse a strng"',
       'Concepts covered: strings, loops',
-      'Maya breezed through strings and worked independently on loops.',
+      'Maya did great and breezed through strings and worked independently on loops.',
       "Instructor's notes: tried slicing first then wrote a for loop herself",
     ],
-    text: 'We began with the warmup activity "Reverse a String", which covered strings and loops. Maya breezed through strings and worked independently on loops. Maya tried slicing first and then wrote a for loop without help.',
+    text: 'For the warmup, we worked on "Reverse a String". It covered strings and loops. Maya did great and breezed through strings and worked independently on loops. Maya tried slicing first and then wrote a for loop without help.',
   },
   {
     heading: 'Main activity',
@@ -39,7 +39,7 @@ export const EXAMPLES: Example[] = [
       'Sam worked independently on conditionals and found functions challenging and needed significant guidance.',
       "Instructor's notes: got the paddle moving, ball bounce logic not finished",
     ],
-    text: 'For the main activity, we worked on "Pong Game", which covered functions and conditionals. Sam worked independently on conditionals but found functions challenging and needed significant guidance. Sam got the paddle moving, and the ball bounce logic is not yet finished.',
+    text: 'For our main activity, we worked on "Pong Game". It covered functions and conditionals. Sam worked independently on conditionals but found functions challenging and needed significant guidance. Sam got the paddle moving, and the ball bounce logic is not yet finished.',
   },
   {
     heading: 'Plan for next week',
