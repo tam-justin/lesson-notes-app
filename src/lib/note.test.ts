@@ -21,15 +21,19 @@ describe('templateNote', () => {
   })
 
   it('uses the first name and "we" voice', () => {
-    expect(note[0].body).toContain('For the warmup, we worked on "Fix the maze".')
-    expect(note[0].body).toContain('Maya did great and breezed through variables and worked independently on loops.')
+    expect(note[0].body).toContain('We started with "Fix the maze".')
+    expect(note[0].body).toContain('Maya handled variables with ease and worked independently on loops.')
   })
 
-  it('groups concepts by rating, best first, with an Oxford comma', () => {
-    expect(note[1].body).toContain('For our main activity, we worked on "Enemy spawning". It covered functions, conditionals, and lists.')
-    expect(note[1].body).toContain(
-      'Maya worked independently on lists, needed some support with conditionals, and found functions challenging and needed significant guidance.',
-    )
+  it('groups concepts by rating, best first, at most two ratings per sentence', () => {
+    expect(note[1].body).toContain('Our main activity was "Enemy spawning".')
+    expect(note[1].body).toContain('Maya worked independently on lists and needed some support with conditionals.')
+    expect(note[1].body).toContain('Maya found functions challenging and needed a lot of guidance.')
+  })
+
+  it('names each concept once instead of listing them first', () => {
+    expect(note[1].body).not.toContain('It covered')
+    expect(note[1].body.match(/conditionals/g)).toHaveLength(1)
   })
 
   it('capitalizes and punctuates free text', () => {
@@ -38,7 +42,12 @@ describe('templateNote', () => {
   })
 
   it('includes per-concept comments', () => {
-    expect(note[1].body).toContain('On functions: Needed a worked example.')
+    expect(note[1].body).toContain('With functions, Maya needed a worked example.')
+  })
+
+  it('keeps a non-verb comment as its own clause', () => {
+    const l = lesson({ main: { name: '', concepts: [concept('lists', 2, 'Indexing was tricky')], details: '' } })
+    expect(templateNote(student(), l)[1].body).toContain('Regarding lists, indexing was tricky.')
   })
 
   it('never leaks private notes', () => {
@@ -72,7 +81,7 @@ describe('resolveNote', () => {
   })
 
   it('includes main-activity concepts in the live note', () => {
-    expect(resolveNote(student(), withMain)[1].body).toContain('It covered loops.')
+    expect(resolveNote(student(), withMain)[1].body).toContain('worked independently on loops')
   })
 
   it('uses an override as the text and flags it stale when the lesson changes afterward', () => {

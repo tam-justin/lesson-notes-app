@@ -1,5 +1,5 @@
 import type { MLCEngineInterface } from '@mlc-ai/web-llm'
-import { checkPolish, EXAMPLES, factsMessage, SYSTEM } from './polish'
+import { checkPolish, DRAFT_EXAMPLES, DRAFT_SYSTEM, draftMessage, EXAMPLES, factsMessage, SYSTEM } from './polish'
 
 export const MODELS = [
   { id: 'Qwen3-8B-q4f16_1-MLC', label: 'Qwen3 8B, 5.7 GB' },
@@ -90,6 +90,10 @@ export interface PolishInput {
   student: string
   heading: string
   facts: string[]
+  /** The instructor's own text for a hand-edited section; when set, it is lightly edited instead of rebuilt from facts. */
+  draft?: string
+  /** All concept names in the lesson section; any the draft omits must stay out of the polished text. */
+  knownTerms?: string[]
   /** Terms (concept names) that must survive into the output. */
   required: string[]
   /** The model in use, for per-model request options. */
@@ -109,14 +113,23 @@ type Message = { role: 'system' | 'user' | 'assistant'; content: string }
  * problems spelled out, and if it still fails the caller should keep its own draft (ok is false).
  */
 export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: PolishInput): Promise<PolishResult> {
-  const messages: Message[] = [
-    { role: 'system', content: SYSTEM },
-    ...EXAMPLES.flatMap<Message>((x) => [
-      { role: 'user', content: factsMessage(x.student, x.heading, x.facts) },
-      { role: 'assistant', content: x.text },
-    ]),
-    { role: 'user', content: factsMessage(input.student, input.heading, input.facts) },
-  ]
+  const messages: Message[] = input.draft
+    ? [
+        { role: 'system', content: DRAFT_SYSTEM },
+        ...DRAFT_EXAMPLES.flatMap<Message>((x) => [
+          { role: 'user', content: draftMessage(x.student, x.heading, x.facts[0]) },
+          { role: 'assistant', content: x.text },
+        ]),
+        { role: 'user', content: draftMessage(input.student, input.heading, input.draft) },
+      ]
+    : [
+        { role: 'system', content: SYSTEM },
+        ...EXAMPLES.flatMap<Message>((x) => [
+          { role: 'user', content: factsMessage(x.student, x.heading, x.facts) },
+          { role: 'assistant', content: x.text },
+        ]),
+        { role: 'user', content: factsMessage(input.student, input.heading, input.facts) },
+      ]
 
   const ask = async (msgs: Message[]) => {
     const res = await e.chat.completions.create({
@@ -129,15 +142,16 @@ export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: 
     return (res.choices[0]?.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim()
   }
 
+  const draft = input.draft ? { text: input.draft, knownTerms: input.knownTerms ?? [] } : undefined
   let text = await ask(messages)
-  let problems = checkPolish(text, input.facts, input.required)
+  let problems = checkPolish(text, input.facts, input.required, draft)
   if (problems.length) {
     text = await ask([
       ...messages,
       { role: 'assistant', content: text },
       { role: 'user', content: `That was rejected: ${problems.join('; ')}. Rewrite it following every rule. Output only the note text.` },
     ])
-    problems = checkPolish(text, input.facts, input.required)
+    problems = checkPolish(text, input.facts, input.required, draft)
   }
   return { text, ok: problems.length === 0, problems }
 }

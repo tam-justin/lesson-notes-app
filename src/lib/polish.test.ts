@@ -154,3 +154,29 @@ describe('sectionFacts', () => {
     expect(requiredTerms(l, 'Plan for next week')).toEqual([])
   })
 })
+
+describe('checkPolish on a hand-edited draft', () => {
+  const draftText = 'We worked on "Maze Runner". Riley needed some support with lists.'
+  const draft = { text: draftText, knownTerms: ['loops', 'conditionals', 'lists'] }
+
+  it('accepts a light clean-up of the draft', () => {
+    const out = 'We worked on "Maze Runner". Riley needed some support with lists.'
+    expect(checkPolish(out, [draftText], [], draft)).toEqual([])
+  })
+
+  it('rejects text that puts back a concept the instructor removed', () => {
+    const out = 'We worked on "Maze Runner". Riley worked independently on loops and needed some support with lists.'
+    const problems = checkPolish(out, [draftText], [], draft)
+    expect(problems.join(' ')).toContain('put back details the instructor removed: loops')
+  })
+
+  it('rejects added content that is not in the draft', () => {
+    const out = 'We worked on "Maze Runner". Riley needed some support with lists, then explored recursion and sorting algorithms.'
+    expect(checkPolish(out, [draftText], [], draft).join(' ')).toContain('not in the draft')
+  })
+
+  it('allows a typo fix inside the quoted activity name', () => {
+    const typo = { text: 'We worked on "maze runnr". Riley did well.', knownTerms: [] }
+    expect(checkPolish('We worked on "Maze Runner". Riley did well.', [typo.text], [], typo)).toEqual([])
+  })
+})

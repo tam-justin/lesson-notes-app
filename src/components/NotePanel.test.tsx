@@ -4,8 +4,14 @@ import { useEffect, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { concept, lesson as makeLesson, student } from '../test/factories'
 import type { Lesson } from '../types'
-import { LOW_MEMORY_NOTE } from '../lib/llm'
+import { LOW_MEMORY_NOTE, polishSection } from '../lib/llm'
 import { NotePanel } from './NotePanel'
+
+vi.mock('../lib/llm', async (orig) => ({
+  ...(await orig<typeof import('../lib/llm')>()),
+  loadEngine: vi.fn().mockResolvedValue({}),
+  polishSection: vi.fn(),
+}))
 
 const base = makeLesson({
   warmup: { name: 'Maze', concepts: [concept('loops', 3)], details: '' },
@@ -173,6 +179,18 @@ describe('NotePanel', () => {
       render(<Harness />)
       expect(screen.getByLabelText('AI model')).toBeEnabled()
       expect(screen.queryByText(LOW_MEMORY_NOTE)).not.toBeInTheDocument()
+    })
+
+    it('polishes the hand-edited text, not the generated draft', async () => {
+      vi.mocked(polishSection).mockImplementation(async (_e, input) => ({ text: `polished: ${input.facts.join(' | ')}`, ok: true, problems: [] }))
+      render(<Harness />)
+      await userEvent.clear(box('Warmup'))
+      await userEvent.type(box('Warmup'), 'My own words about the maze.')
+      await userEvent.click(screen.getByRole('button', { name: /Polish with AI/ }))
+      await vi.waitFor(() => expect(polishSection).toHaveBeenCalled())
+      const input = vi.mocked(polishSection).mock.calls[0][1]
+      expect(input.draft).toBe('My own words about the maze.')
+      expect(input.facts.join(' ')).not.toContain('worked independently on loops')
     })
 
     it('defaults to the low-memory model when no GPU adapter is available', async () => {

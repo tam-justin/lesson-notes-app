@@ -105,10 +105,14 @@ export function NotePanel({
       const rejected: string[] = []
       for (const s of note) {
         if (!s.body.trim()) continue
-        // Work from the lesson's facts. If the section was hand-edited, the edited text is the only fact.
-        const facts = s.edited ? [`Instructor's draft: ${s.body.trim()}`] : sectionFacts(student, lesson, s.heading)
-        const required = s.edited ? [] : requiredTerms(lesson, s.heading)
-        const result = await polishSection(engine, { student: student.firstName, heading: s.heading, facts, required, modelId })
+        // A hand-edited section is the instructor's text: lightly edit it. Otherwise work from the lesson's facts.
+        const draft = s.edited ? s.body.trim() : undefined
+        const facts = draft ? [draft] : sectionFacts(student, lesson, s.heading)
+        const known = requiredTerms(lesson, s.heading)
+        const required = draft ? [] : known
+        const result = await polishSection(engine, {
+          student: student.firstName, heading: s.heading, facts, draft, knownTerms: known, required, modelId,
+        })
         if (result.ok) {
           edits[s.heading] = { text: result.text, baseline: s.generated }
           onChange({ noteEdits: { ...edits } })

@@ -15,20 +15,47 @@ const sentence = (s: string) => {
 }
 
 const PHRASE: Record<Rating, (c: string) => string> = {
-  4: (c) => `did great and breezed through ${c}`,
+  4: (c) => `handled ${c} with ease`,
   3: (c) => `worked independently on ${c}`,
   2: (c) => `needed some support with ${c}`,
-  1: (c) => `found ${c} challenging and needed significant guidance`,
+  1: (c) => `found ${c} challenging and needed a lot of guidance`,
 }
 
-function ratingSentence(first: string, concepts: ConceptEntry[]) {
-  const parts = ([4, 3, 2, 1] as Rating[])
+/** Rating groups, best first, as clauses like "worked independently on loops". */
+function ratingClauses(concepts: ConceptEntry[]) {
+  return ([4, 3, 2, 1] as Rating[])
     .map((r) => {
       const names = concepts.filter((c) => c.rating === r).map((c) => c.name)
       return names.length ? PHRASE[r](list(names)) : ''
     })
     .filter(Boolean)
+}
+
+/** One sentence for the facts the AI sees. */
+function ratingSentence(first: string, concepts: ConceptEntry[]) {
+  const parts = ratingClauses(concepts)
   return parts.length ? `${first} ${list(parts)}.` : ''
+}
+
+/** For the note itself: at most two clauses per sentence, so three or four ratings do not become one run-on. */
+function ratingSentences(first: string, concepts: ConceptEntry[]) {
+  const parts = ratingClauses(concepts)
+  const out: string[] = []
+  for (let i = 0; i < parts.length; i += 2) out.push(`${first} ${list(parts.slice(i, i + 2))}.`)
+  return out
+}
+
+const VERB_FIRST = /^(\w+ed|got|had|made|ran|wrote|took|found|did|forgot|kept|knew|saw|said|asked)\b/i
+
+/**
+ * A comment is the instructor's fragment. One that starts with a verb ("forgot to reset the index") gets the student
+ * as its subject; anything else ("indexing was tricky") stands on its own after "Regarding <concept>,".
+ */
+function commentSentence(first: string, concept: string, text: string) {
+  const end = /[.!?]$/.test(text) ? '' : '.'
+  if (VERB_FIRST.test(text)) return `With ${concept}, ${first} ${text[0].toLowerCase()}${text.slice(1)}${end}`
+  const keep = text.split(/\s/)[0] === first || /^[A-Z]{2,}|^I\b/.test(text)
+  return `Regarding ${concept}, ${keep ? text : text[0].toLowerCase() + text.slice(1)}${end}`
 }
 
 /** What an activity says, in one place: both the template note and the AI's facts are built from this. */
@@ -44,11 +71,11 @@ function activityParts(first: string, a: Activity) {
 
 function activityText(first: string, a: Activity, lead: string) {
   const p = activityParts(first, a)
+  // Every concept carries a rating, so the rating sentences already name them all.
   const summary = [
     p.name && `${lead} "${p.name}".`,
-    p.concepts.length && `${p.name ? 'It' : 'This activity'} covered ${list(p.concepts)}.`,
-    p.rating,
-    ...p.comments.map((c) => `On ${c.concept}: ${sentence(c.text)}`),
+    ...ratingSentences(first, a.concepts),
+    ...p.comments.map((c) => commentSentence(first, c.concept, c.text)),
   ]
     .filter(Boolean)
     .join(' ')
@@ -80,8 +107,8 @@ export function requiredTerms(lesson: Lesson, heading: string): string[] {
 export function templateNote(student: Pick<Student, 'firstName'>, lesson: Lesson): NoteSection[] {
   const first = student.firstName
   return [
-    { heading: 'Warmup', body: activityText(first, lesson.warmup, 'For the warmup, we worked on') },
-    { heading: 'Main activity', body: activityText(first, lesson.main, 'For our main activity, we worked on') },
+    { heading: 'Warmup', body: activityText(first, lesson.warmup, 'We started with') },
+    { heading: 'Main activity', body: activityText(first, lesson.main, 'Our main activity was') },
     { heading: 'Plan for next week', body: lesson.nextPlan.trim() ? sentence(lesson.nextPlan) : '' },
   ]
 }

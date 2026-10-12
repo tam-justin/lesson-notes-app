@@ -48,7 +48,6 @@ describe('LessonPage', () => {
     await userEvent.type(within(main).getByPlaceholderText(/Add a concept/), 'for loops{Enter}')
     await userEvent.click(within(main).getByRole('radio', { name: /Needed support/ }))
 
-    expect(summary).toHaveTextContent('This activity covered for loops.')
     expect(summary).toHaveTextContent('Maya needed some support with for loops.')
   })
 
