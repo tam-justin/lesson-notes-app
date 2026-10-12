@@ -1,6 +1,13 @@
 # Lesson Notes
 
-A small local-first web app for writing up coding lesson notes. Capture what happens during a lesson, then turn it into a clean, parent-facing note in a few clicks.
+A small local-first web app for writing up coding lesson notes. Capture what happens during a lesson, then turn it into a clean, parent-facing note in a few clicks. Everything stays in your browser: there is no server and no account, and an optional AI polish runs on your own device.
+
+## Live app
+
+- <https://lesson-notes.tam-justin.dev>
+- <https://lesson-notes-app-mu.vercel.app> (the same app, kept as a backup address in case the custom domain lapses)
+
+Data is stored per browser and per address, so notes entered on one URL do not appear on the other. Use **Settings → Export JSON** to move them.
 
 ## What it does
 
@@ -26,7 +33,7 @@ There is no server and no account. Everything is stored in your browser's `local
 
 - A browser with WebGPU (recent Chrome or Edge). Without it, the template draft still works.
 - A one-time download per model, cached by the browser afterward: Qwen3 8B (about 5.7 GB, the default) or Llama 3.1 8B (about 5 GB). Both need roughly 6 GB of free GPU memory. On GPUs without half-precision support or a 4 GiB buffer limit, the app defaults to a low-memory model, Qwen2.5 3B (about 2.5 GB), and shows a note that it is less accurate: it can drop verbs, reword activity names, or blur ratings. In side-by-side tests Qwen3 followed the facts most faithfully; Llama sometimes softened a rating. Your own choice, made in the dropdown next to the button, always wins. Keep the dev server on port 4173 so the cache and your data stay put.
-- The model is given the lesson's facts, not the draft prose, and its output is checked: concept names must survive, activity names may only have a one or two letter typo fixed, and invented filler words, stray quoted text and he/she pronouns are rejected. It gets one retry; if the output still fails, that section keeps your draft and you are told which one. The checks cannot catch every error, such as a rating attached to the wrong thing.
+- The model is given the lesson's facts, not the draft prose, and its output is checked: concept names must survive, activity names may only have a one or two letter typo fixed, and invented filler words, stray quoted text and he/she pronouns are rejected. It gets one retry; if the output still fails, that section keeps your draft and you are told which one. Sections you edited by hand are lightly cleaned up from your own text, and details you removed are not allowed back. Every number and sentence the instructor wrote must survive, and "we" must stay "we". With **Double-check with a review pass** on (it is off by default), a second prompt to the same model compares the polished text with its source and lists anything added, dropped or changed; a finding triggers one rewrite that must pass the same checks. It adds roughly one extra model call per section. The checks cannot catch every error, such as a rating attached to the wrong thing.
 - Small models can still drift from the facts. Always read the result before copying; **Undo polish** restores the previous text, and **Reset note** removes all edits and rebuilds the note from the lesson (the lesson itself is untouched; use **Delete lesson** to remove a lesson).
 
 ## Development

@@ -1,5 +1,7 @@
 import type { MLCEngineInterface } from '@mlc-ai/web-llm'
-import { checkPolish, DRAFT_EXAMPLES, DRAFT_SYSTEM, draftMessage, EXAMPLES, factsMessage, SYSTEM } from './polish'
+import {
+  checkPolish, DRAFT_EXAMPLES, DRAFT_SYSTEM, draftMessage, EXAMPLES, factsMessage, parseReview, REVIEW_SYSTEM, reviewMessage, SYSTEM,
+} from './polish'
 
 export const MODELS = [
   { id: 'Qwen3-8B-q4f16_1-MLC', label: 'Qwen3 8B, 5.7 GB' },
@@ -29,6 +31,25 @@ export function getSavedModelId(): string | null {
     /* storage unavailable */
   }
   return null
+}
+
+const REVIEW_KEY = 'lesson-notes:review'
+
+/** Whether to double-check polished text with a review pass. Off until the user turns it on. */
+export function getReviewEnabled(): boolean {
+  try {
+    return localStorage.getItem(REVIEW_KEY) === 'on'
+  } catch {
+    return false
+  }
+}
+
+export function setReviewEnabled(on: boolean) {
+  try {
+    localStorage.setItem(REVIEW_KEY, on ? 'on' : 'off')
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 export interface AdapterLike {
@@ -94,6 +115,8 @@ export interface PolishInput {
   draft?: string
   /** All concept names in the lesson section; any the draft omits must stay out of the polished text. */
   knownTerms?: string[]
+  /** Run a second, reviewing pass over the polished text. */
+  review?: boolean
   /** Terms (concept names) that must survive into the output. */
   required: string[]
   /** The model in use, for per-model request options. */
@@ -131,15 +154,19 @@ export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: 
         { role: 'user', content: factsMessage(input.student, input.heading, input.facts) },
       ]
 
-  const ask = async (msgs: Message[]) => {
+  const ask = async (msgs: Message[], temperature = 0.2, maxTokens = 300) => {
     const res = await e.chat.completions.create({
       messages: msgs,
-      temperature: 0.2,
+      temperature,
       top_p: 0.9,
-      max_tokens: 300,
+      max_tokens: maxTokens,
       ...(input.modelId && needsThinkingOff(input.modelId) ? { extra_body: { enable_thinking: false } } : {}),
     })
-    return (res.choices[0]?.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+    return (res.choices[0]?.message?.content ?? '')
+      .replace(/<think>[\s\S]*?<\/think>/g, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/(\S) {2,}/g, '$1 ')
+      .trim()
   }
 
   const draft = input.draft ? { text: input.draft, knownTerms: input.knownTerms ?? [] } : undefined
@@ -152,6 +179,26 @@ export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: 
       { role: 'user', content: `That was rejected: ${problems.join('; ')}. Rewrite it following every rule. Output only the note text.` },
     ])
     problems = checkPolish(text, input.facts, input.required, draft)
+  }
+
+  // Second pass: a reviewer lists what changed in meaning against the source. Any finding earns one more rewrite,
+  // which must pass the same code checks; otherwise the caller keeps its own draft.
+  if (input.review && problems.length === 0) {
+    const before = input.draft ?? input.facts.join('\n')
+    const found = parseReview(await ask([
+      { role: 'system', content: REVIEW_SYSTEM },
+      { role: 'user', content: reviewMessage(before, text) },
+    ], 0, 200))
+    if (found.length) {
+      const rewrite = await ask([
+        ...messages,
+        { role: 'assistant', content: text },
+        { role: 'user', content: `A reviewer compared that with the source and found: ${found.join('; ')}. Rewrite it so none of these remain. Output only the note text.` },
+      ])
+      // The reviewer is advisory and a small model: use the rewrite only if it passes every check. Otherwise keep the
+      // polish that already passed, rather than throwing it away for the draft.
+      if (checkPolish(rewrite, input.facts, input.required, draft).length === 0) text = rewrite
+    }
   }
   return { text, ok: problems.length === 0, problems }
 }

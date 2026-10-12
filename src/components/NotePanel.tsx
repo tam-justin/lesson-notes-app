@@ -1,8 +1,8 @@
 import { Check, Copy, Lock, RotateCcw, Sparkles, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import {
-  getSavedModelId, loadEngine, LOW_MEMORY_MODEL, LOW_MEMORY_NOTE, MODELS, polishSection, recommendedModelId, setModelId,
-  webgpuAvailable,
+  getReviewEnabled, getSavedModelId, loadEngine, LOW_MEMORY_MODEL, LOW_MEMORY_NOTE, MODELS, polishSection, recommendedModelId,
+  setModelId, setReviewEnabled, webgpuAvailable,
 } from '../lib/llm'
 import {
   blankSections, requiredTerms, resolveNote, sectionFacts, toHtml, toPlain, type ResolvedSection,
@@ -11,6 +11,12 @@ import type { Lesson, NoteEdit, Student } from '../types'
 import { Button, ConfirmDialog, Select, Textarea } from './ui'
 
 type Format = 'rich' | 'plain'
+
+/** A section whose polish failed the checks, with the first problem found. */
+interface Rejected {
+  heading: string
+  reason: string
+}
 
 const FORMATS: { f: Format; label: string }[] = [
   { f: 'rich', label: 'Rich text' },
@@ -44,7 +50,8 @@ export function NotePanel({
       live = false
     }
   }, [])
-  const [kept, setKept] = useState<string[]>([])
+  const [review, setReview] = useState(getReviewEnabled)
+  const [kept, setKept] = useState<Rejected[]>([])
   const [confirmReset, setConfirmReset] = useState(false)
   const copiedTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(copiedTimer.current), [])
@@ -102,7 +109,7 @@ export function NotePanel({
       setProgress(null)
       setUndo(lesson.noteEdits)
       const edits: Record<string, NoteEdit> = { ...lesson.noteEdits }
-      const rejected: string[] = []
+      const rejected: Rejected[] = []
       for (const s of note) {
         if (!s.body.trim()) continue
         // A hand-edited section is the instructor's text: lightly edit it. Otherwise work from the lesson's facts.
@@ -111,13 +118,13 @@ export function NotePanel({
         const known = requiredTerms(lesson, s.heading)
         const required = draft ? [] : known
         const result = await polishSection(engine, {
-          student: student.firstName, heading: s.heading, facts, draft, knownTerms: known, required, modelId,
+          student: student.firstName, heading: s.heading, facts, draft, knownTerms: known, required, modelId, review,
         })
         if (result.ok) {
           edits[s.heading] = { text: result.text, baseline: s.generated }
           onChange({ noteEdits: { ...edits } })
         } else {
-          rejected.push(s.heading)
+          rejected.push({ heading: s.heading, reason: result.problems[0] ?? 'it failed the checks' })
         }
       }
       setKept(rejected)
@@ -189,7 +196,10 @@ export function NotePanel({
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       {kept.length > 0 && (
         <p role="status" className="rounded-md border border-hilite bg-hilite-soft px-3 py-2 text-sm">
-          The AI changed or dropped details in: {kept.join(', ')}. Those sections kept your draft. Try again{modelId === LOW_MEMORY_MODEL ? ', or switch to a larger model if your device can run one' : ''}.
+          The AI's version of {kept.map((k) => k.heading).join(', ')} did not pass the checks, so {kept.length > 1 ? 'those sections' : 'that section'} kept your draft. Try again{modelId === LOW_MEMORY_MODEL ? ', or switch to a larger model if your device can run one' : ''}.
+          <span className="mt-1 block text-xs text-muted">
+            {kept.map((k) => `${k.heading}: ${k.reason}`).join(' · ')}
+          </span>
         </p>
       )}
       {!canPolish && (
@@ -217,6 +227,16 @@ export function NotePanel({
           </Button>
         )}
       </div>
+      <label className="flex min-h-11 items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-4 accent-[var(--ink)]"
+          checked={review}
+          disabled={busy || !canPolish}
+          onChange={(e) => (setReview(e.target.checked), setReviewEnabled(e.target.checked))}
+        />
+        Double-check with a review pass (slower, catches changed or dropped details)
+      </label>
       {canPolish && modelId === LOW_MEMORY_MODEL && (
         <p role="note" className="rounded-md border border-hilite bg-hilite-soft px-3 py-2 text-sm">{LOW_MEMORY_NOTE}</p>
       )}

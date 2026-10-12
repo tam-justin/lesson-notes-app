@@ -11,7 +11,9 @@ Rules:
 5. Put activity names in quotes and fix obvious spelling mistakes in them. Keep concept names as written.
 6. Mention each concept once, together with how the student did. Do not list the concepts separately before the ratings.
 7. Work an instructor's comment about a concept into a sentence of its own, with the student's name as the subject.
-8. Write 2 to 5 sentences. No lists, no headings, no greeting, no sign-off. Output only the note text.`
+8. Keep every number, tool name, and other detail from the instructor's notes. Where a note says "we" did something, keep "we"; do not change it to "they" or the student's name.
+9. Put the instructor's notes in their own paragraph, after a blank line, as the example shows.
+10. Write 2 to 5 sentences. No lists, no headings, no greeting, no sign-off. Output only the note text.`
 
 interface Example {
   heading: string
@@ -30,7 +32,7 @@ export const EXAMPLES: Example[] = [
       'Maya handled strings with ease and worked independently on loops.',
       "Instructor's notes: tried slicing first then wrote a for loop herself",
     ],
-    text: 'We started with "Reverse a String". Maya handled strings with ease and worked independently on loops. Maya tried slicing first and then wrote a for loop without help.',
+    text: 'We started with "Reverse a String". Maya handled strings with ease and worked independently on loops.\n\nMaya tried slicing first and then wrote a for loop without help.',
   },
   {
     heading: 'Main activity',
@@ -42,7 +44,7 @@ export const EXAMPLES: Example[] = [
       'About functions: needed a worked example',
       "Instructor's notes: got the paddle moving, ball bounce logic not finished",
     ],
-    text: 'Our main activity was "Pong Game". Sam worked independently on conditionals but found functions challenging and needed a lot of guidance. With functions, Sam needed a worked example. Sam got the paddle moving, and the ball bounce logic is not yet finished.',
+    text: 'Our main activity was "Pong Game". Sam worked independently on conditionals but found functions challenging and needed a lot of guidance. With functions, Sam needed a worked example.\n\nSam got the paddle moving, and the ball bounce logic is not yet finished.',
   },
   {
     heading: 'Plan for next week',
@@ -62,7 +64,8 @@ The DRAFT is the instructor's own text. Improve its grammar, spelling and flow a
 Rules:
 1. Keep the instructor's wording, order, details, and paragraph breaks wherever they are already clear. Change as little as possible.
 2. Add nothing and remove nothing: no new facts, reasons, goals, praise, or evaluations, and keep every detail and rating the draft states.
-3. Keep the voice (first-person plural "we", warm and formal) and the tense.
+3. Keep the voice (first-person plural "we", warm and formal) and the tense. Where the draft says "we", keep "we"; never change it to "they" or the student's name.
+   Keep every sentence, number, and tool name. Fix spelling and grammar errors you find, without rewording what is already correct.
 4. Refer to the student by first name. Never use he, she, him, her, his, or hers.
 5. Keep activity names in quotes and fix obvious spelling mistakes in them.
 6. Output only the edited note text. No headings, no greeting, no sign-off, no commentary.`
@@ -82,7 +85,33 @@ export const DRAFT_EXAMPLES: Example[] = [
   },
 ]
 
-export const draftMessage = (student: string, heading: string, draft: string) =>
+/** The second pass: it only lists differences in meaning between BEFORE and AFTER, it never rewrites. */
+export const REVIEW_SYSTEM = `You compare two versions of a lesson note for a parent. BEFORE is the source of truth. AFTER is a polished version.
+List every difference in meaning: a fact, concept, detail, or comment that AFTER added, dropped, or changed; a student rating that became stronger, weaker, or blurred together with another; a wrong tense (plans must be future, what happened must be past); a changed activity name.
+Ignore differences in wording, order, and grammar that keep the same meaning.
+
+Output format, nothing else:
+- If there are no differences in meaning, output exactly: OK
+- Otherwise output one line per difference, each starting with "- " and naming the exact words involved.`
+
+export const reviewMessage = (before: string, after: string) => `BEFORE:\n${before}\n\nAFTER:\n${after}`
+
+/** Reads the reviewer's reply into a list of problems; an empty list means it found nothing. */
+export function parseReview(reply: string): string[] {
+  const text = reply.trim()
+  if (!text || /^OK\b/i.test(text)) return []
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+  const items = lines.filter((l) => /^([-*•]|\d+[.)])\s+/.test(l)).map((l) => l.replace(/^([-*•]|\d+[.)])\s+/, ''))
+  const found = items.filter((l) => !/^OK\b/i.test(l)).slice(0, 5)
+  if (found.length) return found
+  if (items.length) return []
+  // Prose with no list: a finding unless it plainly says there are none. A false alarm only costs one checked rewrite.
+  const clean = /\b(no|not any|without any) (meaningful |significant )?(differences?|changes?|problems?|issues?|discrepanc\w+)\b|\b(everything|all|both) (matches|matched|is (the )?same|are (the )?same|is accurate|is preserved|is consistent)\b|\bidentical\b|\bsame meaning\b/i
+  if (clean.test(text)) return []
+  return [text.slice(0, 300)]
+}
+
+export const draftMessage =(student: string, heading: string, draft: string) =>
   `Student: ${student}\nSection: ${heading}\nDRAFT:\n${draft}`
 
 const FILLER = /\b(introductory|foundational|reinforc\w*|solidif\w*|demonstrat\w*|excellent|great|impressive|wonderful|fantastic|strong)\b/gi
@@ -112,6 +141,8 @@ const activityNames = (facts: string[]) =>
 
 const quoted = (text: string) => [...text.matchAll(/["“]([^"”]+)["”]/g)].map((m) => m[1])
 
+const paragraphs = (s: string) => s.split(/\n{2,}/).filter((p) => p.trim()).length
+
 const wordsOf = (s: string) => s.toLowerCase().match(/[a-z']{4,}/g) ?? []
 
 /**
@@ -120,16 +151,72 @@ const wordsOf = (s: string) => s.toLowerCase().match(/[a-z']{4,}/g) ?? []
  */
 function checkDraft(out: string, draft: string, knownTerms: string[]): string[] {
   const problems: string[] = []
+  if (paragraphs(out) < paragraphs(draft)) problems.push('it merged paragraphs; keep the same paragraph breaks as the draft')
+
   const back = knownTerms.filter((t) => !norm(draft).includes(norm(t)) && norm(out).includes(norm(t)))
   if (back.length) problems.push(`it put back details the instructor removed: ${back.join(', ')}`)
 
-  const stem = (w: string) => w.slice(0, 4)
-  const have = new Set(wordsOf(draft).map(stem))
-  const novel = [...new Set(wordsOf(out.replace(/["“][^"”]+["”]/g, ' ')))].filter((w) => !have.has(stem(w)))
-  const allowed = Math.max(2, Math.floor(wordsOf(draft).length * 0.1))
+  // A corrected spelling counts as the same word, so fixing typos is never "new content".
+  const have = wordsOf(draft)
+  const novel = [...new Set(wordsOf(out.replace(/["“][^"”]+["”]/g, ' ')))].filter((w) => !have.some((h) => near(w, h)))
+  const allowed = Math.max(2, Math.floor(have.length * 0.1))
   if (novel.length > allowed) problems.push(`it added content that is not in the draft: ${novel.join(', ')}`)
   return problems
 }
+
+const STOP = new Set(
+  'that this with from have they them their there then than were what when which would could should about into also just very much some more over only will been being after before while your ours does done made'.split(' '),
+)
+
+/** Same word, allowing a plural, a tense change, or a corrected spelling. */
+function near(a: string, b: string): boolean {
+  if (a === b) return true
+  if (a.length >= 5 && b.length >= 5 && a.slice(0, 5) === b.slice(0, 5)) return true
+  return editDistance(a, b) <= (Math.max(a.length, b.length) >= 6 ? 2 : 1)
+}
+
+/** Share of a sentence's content words that must survive; below 1 so a synonym or two does not sink a good edit. */
+const KEEP_RATIO = 0.6
+
+const contentWords = (s: string) => [...new Set(wordsOf(s))].filter((w) => !STOP.has(w))
+const sentencesOf = (s: string) => s.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter(Boolean)
+const FIRST_PERSON = /\b(we|our|us|we're|we'll)\b/i
+
+/**
+ * Details the instructor wrote must survive: every number, and every sentence (most of its content words). A
+ * sentence about what "we" did must still say "we" rather than switch to a name or "they".
+ */
+function checkCoverage(out: string, sources: string[]): string[] {
+  const problems: string[] = []
+  const src = sources.join(' ')
+  const outWords = wordsOf(out)
+
+  const numbers = [...new Set(src.match(/\d+(?:\.\d+)?/g) ?? [])].filter((n) => !new RegExp(`(?<![\\d.])${n}(?![\\d])`).test(out))
+  if (numbers.length) problems.push(`it dropped numbers from the source: ${numbers.join(', ')}`)
+
+  const outSentences = sentencesOf(out)
+  for (const sentence of sources.flatMap(sentencesOf)) {
+    const words = contentWords(sentence)
+    if (words.length < 2) continue
+    const hit = (s: string) => words.filter((w) => wordsOf(s).some((o) => near(w, o))).length
+    if (words.filter((w) => outWords.some((o) => near(w, o))).length < Math.ceil(words.length * KEEP_RATIO)) {
+      problems.push(`it dropped or rewrote a detail: "${sentence.slice(0, 80)}" (keep every detail)`)
+      continue
+    }
+    if (FIRST_PERSON.test(sentence)) {
+      const best = outSentences.reduce((a, b) => (hit(b) > hit(a) ? b : a), '')
+      if (best && !FIRST_PERSON.test(best)) problems.push(`it changed "we" to a name or "they" in: "${sentence.slice(0, 80)}"`)
+    }
+  }
+  return problems
+}
+
+/** The parts of the facts that are the instructor's own words, as opposed to lines built by the template. */
+const freeText = (facts: string[]) =>
+  facts
+    .filter((f) => !/^(Activity|Concepts covered):/.test(f))
+    .filter((f) => !/\b(handled .+ with ease|worked independently on|needed some support with|found .+ challenging)/.test(f))
+    .map((f) => f.replace(/^(About [^:]+|Instructor's notes|Plan for next week|Instructor's draft): /, ''))
 
 /** Returns a list of problems with a polished section; an empty list means it is acceptable. */
 export function checkPolish(
@@ -145,6 +232,11 @@ export function checkPolish(
   if (draft) problems.push(...checkDraft(out, draft.text, draft.knownTerms))
 
   const factText = facts.join(' ')
+  problems.push(...checkCoverage(out, draft ? [draft.text] : freeText(facts)))
+  // The template puts the instructor's notes in their own paragraph; a polish must not fold them into the summary.
+  if (!draft && facts.some((f) => f.startsWith("Instructor's notes:")) && paragraphs(out) < 2) {
+    problems.push("it put the instructor's notes in the same paragraph; start them in a new paragraph after a blank line")
+  }
   const missing = required.filter((t) => !norm(out).includes(norm(t)))
   if (missing.length) problems.push(`it left out: ${missing.join(', ')}`)
 
@@ -164,8 +256,9 @@ export function checkPolish(
       problems.push(`it changed or dropped the activity name "${name}" (keep it in quotes, fixing at most a one or two letter typo)`)
     }
   }
+  // For an edited draft, only text the instructor already put in quotes may be quoted.
   const stray = inOutput.filter(
-    (q) => !names.some((n) => editDistance(squash(q), squash(n)) <= MAX_NAME_EDITS) && !squash(factText).includes(squash(q)),
+    (q) => !names.some((n) => editDistance(squash(q), squash(n)) <= MAX_NAME_EDITS) && (draft || !squash(factText).includes(squash(q))),
   )
   if (stray.length) problems.push(`it put text in quotes that is not an activity name: ${stray.map((q) => `"${q}"`).join(', ')}`)
 
