@@ -114,7 +114,21 @@ export function parseReview(reply: string): string[] {
 export const draftMessage =(student: string, heading: string, draft: string) =>
   `Student: ${student}\nSection: ${heading}\nDRAFT:\n${draft}`
 
-const FILLER = /\b(introductory|foundational|reinforc\w*|solidif\w*|demonstrat\w*|excellent|great|impressive|wonderful|fantastic|strong)\b/gi
+/**
+ * The instructor's own text often says "his" or "she". The model copies it, then fails the pronoun check twice. So the
+ * text it is sent already uses the student's name; the checks still run against the original.
+ */
+export function neutralizePronouns(text: string, name: string): string {
+  const objectNext = '(a|an|the|some|another|this|that|it|them|to|with|for|on|in|at|up|through|and|but|when|before|after)'
+  // Possessives become "their" so the name is not repeated ("Riley did polishing for Riley's app").
+  return text
+    .replace(/\b(his|hers)\b/gi, 'their')
+    .replace(new RegExp(`\\bher\\b(?!\\s+${objectNext}\\b)(?=\\s+[a-z])`, 'gi'), 'their')
+    .replace(/\b(he|she|him|her)\b/gi, name)
+    .replace(/\b(himself|herself)\b/gi, 'themselves')
+}
+
+const FILLER =/\b(introductory|foundational|reinforc\w*|solidif\w*|demonstrat\w*|excellent|great|impressive|wonderful|fantastic|strong)\b/gi
 const GENDERED = /\b(he|she|him|his|her|hers|himself|herself)\b/gi
 
 const norm = (s: string) => s.toLowerCase().replace(/[-_]/g, ' ')
@@ -141,7 +155,8 @@ const activityNames = (facts: string[]) =>
 
 const quoted = (text: string) => [...text.matchAll(/["“]([^"”]+)["”]/g)].map((m) => m[1])
 
-const paragraphs = (s: string) => s.split(/\n{2,}/).filter((p) => p.trim()).length
+/** A line break of any kind starts a new paragraph: the note is rendered with one, and the instructor chose it. */
+const paragraphs = (s: string) => s.split(/\n+/).filter((p) => p.trim()).length
 
 const wordsOf = (s: string) => s.toLowerCase().match(/[a-z']{4,}/g) ?? []
 
@@ -149,7 +164,7 @@ const wordsOf = (s: string) => s.toLowerCase().match(/[a-z']{4,}/g) ?? []
  * A light edit may fix wording but must not reintroduce what the instructor removed. Lesson terms missing from the
  * draft are forbidden outright; beyond that, only a few new content words are tolerated.
  */
-function checkDraft(out: string, draft: string, knownTerms: string[]): string[] {
+function checkDraft(out: string, draft: string, knownTerms: string[], student = ''): string[] {
   const problems: string[] = []
   if (paragraphs(out) < paragraphs(draft)) problems.push('it merged paragraphs; keep the same paragraph breaks as the draft')
 
@@ -158,7 +173,11 @@ function checkDraft(out: string, draft: string, knownTerms: string[]): string[] 
 
   // A corrected spelling counts as the same word, so fixing typos is never "new content".
   const have = wordsOf(draft)
-  const novel = [...new Set(wordsOf(out.replace(/["“][^"”]+["”]/g, ' ')))].filter((w) => !have.some((h) => near(w, h)))
+  // The student's name replaces "he", "his" and the like, so it is never new content.
+  const name = student.toLowerCase()
+  const novel = [...new Set(wordsOf(out.replace(/["“][^"”]+["”]/g, ' ')))].filter(
+    (w) => !(name && w.startsWith(name)) && !have.some((h) => near(w, h)),
+  )
   const allowed = Math.max(2, Math.floor(have.length * 0.1))
   if (novel.length > allowed) problems.push(`it added content that is not in the draft: ${novel.join(', ')}`)
   return problems
@@ -211,6 +230,35 @@ function checkCoverage(out: string, sources: string[]): string[] {
   return problems
 }
 
+/**
+ * Puts back paragraph breaks the model folded away. Each later paragraph of the source is located in the output by
+ * its first sentence, and a break is inserted before the sentence that matches best.
+ */
+export function restoreParagraphs(out: string, starts: string[]): string {
+  if (!starts.length || paragraphs(out) > starts.length) return out
+  const parts = out.split(/(?<=[.!?])(\s+)/) // sentence, separator, sentence, ...
+  for (const start of starts) {
+    const words = contentWords(sentencesOf(start)[0] ?? '')
+    if (words.length < 2) continue
+    let best = -1
+    let bestHit = 0
+    for (let i = 2; i < parts.length; i += 2) {
+      const have = wordsOf(parts[i])
+      const hit = words.filter((w) => have.some((h) => near(w, h))).length
+      if (hit > bestHit) [best, bestHit] = [i, hit]
+    }
+    if (best > 0 && bestHit >= Math.ceil(words.length * KEEP_RATIO) && !/\n\s*\n/.test(parts[best - 1])) parts[best - 1] = '\n\n'
+  }
+  return parts.join('')
+}
+
+/** Where the later paragraphs of the source begin: the extra paragraphs of a draft, or the instructor's notes. */
+export function paragraphStarts(facts: string[], draft?: string): string[] {
+  if (draft) return draft.split(/\n+/).map((p) => p.trim()).filter(Boolean).slice(1)
+  const notes = facts.find((f) => f.startsWith("Instructor's notes:"))
+  return notes ? [notes.replace(/^Instructor's notes:\s*/, '')] : []
+}
+
 /** The parts of the facts that are the instructor's own words, as opposed to lines built by the template. */
 const freeText = (facts: string[]) =>
   facts
@@ -224,15 +272,28 @@ export function checkPolish(
   facts: string[],
   required: string[],
   /** Set when the instructor's own text is being edited: nothing may be put back that they took out. */
-  draft?: { text: string; knownTerms: string[] },
+  draft?: { text: string; knownTerms: string[]; student?: string },
+  /** The student's first name, which the model may use freely. */
+  student = draft?.student ?? '',
 ): string[] {
   const problems: string[] = []
   const out = output.trim()
   if (!out) return ['the output was empty']
-  if (draft) problems.push(...checkDraft(out, draft.text, draft.knownTerms))
+  if (draft) problems.push(...checkDraft(out, draft.text, draft.knownTerms, draft.student))
 
   const factText = facts.join(' ')
   problems.push(...checkCoverage(out, draft ? [draft.text] : freeText(facts)))
+  // From the lesson facts the model may only restate them: a sentence mostly made of words the facts never use is invented.
+  if (!draft) {
+    const name = student.toLowerCase()
+    const have = wordsOf(factText)
+    for (const sentence of sentencesOf(out)) {
+      const words = contentWords(sentence).filter((w) => !(name && w.startsWith(name)))
+      if (words.length >= 3 && words.filter((w) => have.some((h) => near(w, h))).length < Math.ceil(words.length * 0.5)) {
+        problems.push(`it added a sentence that is not in the facts: "${sentence.slice(0, 80)}"`)
+      }
+    }
+  }
   // The template puts the instructor's notes in their own paragraph; a polish must not fold them into the summary.
   if (!draft && facts.some((f) => f.startsWith("Instructor's notes:")) && paragraphs(out) < 2) {
     problems.push("it put the instructor's notes in the same paragraph; start them in a new paragraph after a blank line")

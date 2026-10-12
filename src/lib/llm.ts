@@ -1,6 +1,7 @@
 import type { MLCEngineInterface } from '@mlc-ai/web-llm'
 import {
-  checkPolish, DRAFT_EXAMPLES, DRAFT_SYSTEM, draftMessage, EXAMPLES, factsMessage, parseReview, REVIEW_SYSTEM, reviewMessage, SYSTEM,
+  checkPolish, DRAFT_EXAMPLES, DRAFT_SYSTEM, draftMessage, EXAMPLES, factsMessage, neutralizePronouns, paragraphStarts, parseReview,
+  restoreParagraphs, REVIEW_SYSTEM, reviewMessage, SYSTEM,
 } from './polish'
 
 export const MODELS = [
@@ -136,14 +137,17 @@ type Message = { role: 'system' | 'user' | 'assistant'; content: string }
  * problems spelled out, and if it still fails the caller should keep its own draft (ok is false).
  */
 export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: PolishInput): Promise<PolishResult> {
-  const messages: Message[] = input.draft
+  const plain = (s: string) => neutralizePronouns(s, input.student)
+  const sentFacts = input.facts.map(plain)
+  const sentDraft = input.draft && plain(input.draft)
+  const messages: Message[] = sentDraft
     ? [
         { role: 'system', content: DRAFT_SYSTEM },
         ...DRAFT_EXAMPLES.flatMap<Message>((x) => [
           { role: 'user', content: draftMessage(x.student, x.heading, x.facts[0]) },
           { role: 'assistant', content: x.text },
         ]),
-        { role: 'user', content: draftMessage(input.student, input.heading, input.draft) },
+        { role: 'user', content: draftMessage(input.student, input.heading, sentDraft) },
       ]
     : [
         { role: 'system', content: SYSTEM },
@@ -151,7 +155,7 @@ export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: 
           { role: 'user', content: factsMessage(x.student, x.heading, x.facts) },
           { role: 'assistant', content: x.text },
         ]),
-        { role: 'user', content: factsMessage(input.student, input.heading, input.facts) },
+        { role: 'user', content: factsMessage(input.student, input.heading, sentFacts) },
       ]
 
   const ask = async (msgs: Message[], temperature = 0.2, maxTokens = 300) => {
@@ -165,39 +169,45 @@ export async function polishSection(e: Pick<MLCEngineInterface, 'chat'>, input: 
     return (res.choices[0]?.message?.content ?? '')
       .replace(/<think>[\s\S]*?<\/think>/g, '')
       .replace(/[ \t]+\n/g, '\n')
+      .replace(/([^\n])\n(?!\n)/g, '$1\n\n')
       .replace(/(\S) {2,}/g, '$1 ')
       .trim()
   }
 
-  const draft = input.draft ? { text: input.draft, knownTerms: input.knownTerms ?? [] } : undefined
-  let text = await ask(messages)
-  let problems = checkPolish(text, input.facts, input.required, draft)
+  const draft = input.draft ? { text: input.draft, knownTerms: input.knownTerms ?? [], student: input.student } : undefined
+  const check = (t: string) => checkPolish(t, input.facts, input.required, draft, input.student)
+  // Models fold paragraphs together; put the source's breaks back before judging the text.
+  const starts = paragraphStarts(input.facts, input.draft)
+  const askNote = async (msgs: Message[]) => restoreParagraphs(await ask(msgs), starts)
+
+  let text = await askNote(messages)
+  let problems = check(text)
   if (problems.length) {
-    text = await ask([
+    text = await askNote([
       ...messages,
       { role: 'assistant', content: text },
       { role: 'user', content: `That was rejected: ${problems.join('; ')}. Rewrite it following every rule. Output only the note text.` },
     ])
-    problems = checkPolish(text, input.facts, input.required, draft)
+    problems = check(text)
   }
 
   // Second pass: a reviewer lists what changed in meaning against the source. Any finding earns one more rewrite,
   // which must pass the same code checks; otherwise the caller keeps its own draft.
   if (input.review && problems.length === 0) {
-    const before = input.draft ?? input.facts.join('\n')
+    const before = sentDraft || sentFacts.join('\n')
     const found = parseReview(await ask([
       { role: 'system', content: REVIEW_SYSTEM },
       { role: 'user', content: reviewMessage(before, text) },
     ], 0, 200))
     if (found.length) {
-      const rewrite = await ask([
+      const rewrite = await askNote([
         ...messages,
         { role: 'assistant', content: text },
         { role: 'user', content: `A reviewer compared that with the source and found: ${found.join('; ')}. Rewrite it so none of these remain. Output only the note text.` },
       ])
       // The reviewer is advisory and a small model: use the rewrite only if it passes every check. Otherwise keep the
       // polish that already passed, rather than throwing it away for the draft.
-      if (checkPolish(rewrite, input.facts, input.required, draft).length === 0) text = rewrite
+      if (check(rewrite).length === 0) text = rewrite
     }
   }
   return { text, ok: problems.length === 0, problems }

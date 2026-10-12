@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { concept, lesson, student } from '../test/factories'
 import { polishSection } from './llm'
 import { requiredTerms, sectionFacts } from './note'
-import { checkPolish, EXAMPLES, parseReview } from './polish'
+import { checkPolish, EXAMPLES, neutralizePronouns, paragraphStarts, parseReview, restoreParagraphs } from './polish'
 
 // All names and lesson details in these tests are invented. Never paste real student data into fixtures.
 const facts = [
@@ -24,7 +24,7 @@ describe('checkPolish', () => {
   })
 
   it('rejects invented filler words but allows words that were in the facts', () => {
-    expect(checkPolish(`${good} This reinforced foundational skills.`, facts, [])[0]).toMatch(/filler.*reinforced.*foundational/)
+    expect(checkPolish(`${good} This reinforced foundational skills.`, facts, []).join()).toMatch(/filler.*reinforced.*foundational/)
     expect(checkPolish('We practiced.\n\nWe did great loops.',["Instructor's notes: great loops"], [])).toEqual([])
   })
 
@@ -224,6 +224,71 @@ describe('checkPolish keeps the instructor\'s details', () => {
     const f = ['Activity: "Maze"', "Instructor's notes: we used the Replit editor and saved 3 copies"]
     expect(checkPolish('We started with "Maze".\n\nWe used the Replit editor and saved 3 copies.', f, [])).toEqual([])
     expect(checkPolish('We started with "Maze". We used an editor.', f, []).join()).toMatch(/dropped/)
+  })
+})
+
+describe('neutralizePronouns', () => {
+  it('swaps subject and possessive pronouns for the name', () => {
+    expect(neutralizePronouns('We did some polishing for his app.', 'Riley')).toBe('We did some polishing for their app.')
+    expect(neutralizePronouns('She finished and he helped her app along.', 'Riley')).toBe('Riley finished and Riley helped their app along.')
+    expect(neutralizePronouns('It was hers.', 'Riley')).toBe('It was their.')
+  })
+
+  it('keeps "her" as the name when it is the object', () => {
+    expect(neutralizePronouns('We gave her a hint and helped her.', 'Riley')).toBe('We gave Riley a hint and helped Riley.')
+  })
+
+  it('leaves text without gendered pronouns alone', () => {
+    expect(neutralizePronouns('We did their app, then theirs.', 'Riley')).toBe('We did their app, then theirs.')
+  })
+
+  it('does not count the student name as new content in an edited draft', () => {
+    const text = 'Wrapped up his app and fixed a couple of bugs.'
+    const out = 'Riley wrapped up their app and fixed a couple of bugs.'
+    expect(checkPolish(out, [text], [], { text, knownTerms: [], student: 'Riley' })).toEqual([])
+  })
+})
+
+describe('restoreParagraphs', () => {
+  const starts = paragraphStarts([], 'Built a countdown timer for 2 mins.\n\nNext Riley tried adding a high score.')
+
+  it('finds where the later paragraphs of the source begin', () => {
+    expect(starts).toEqual(['Next Riley tried adding a high score.'])
+    expect(paragraphStarts(['Activity: "Maze"', "Instructor's notes: built the board"])).toEqual(['built the board'])
+    expect(paragraphStarts(['Activity: "Maze"'])).toEqual([])
+  })
+
+  it('puts a break back before the sentence that matches the source paragraph', () => {
+    const merged = 'We built a countdown timer for 2 mins. Next Riley tried adding a high score. It worked.'
+    expect(restoreParagraphs(merged, starts)).toBe(
+      'We built a countdown timer for 2 mins.\n\nNext Riley tried adding a high score. It worked.',
+    )
+  })
+
+  it('treats a single newline in the source as a paragraph break too', () => {
+    const single = paragraphStarts([], 'Built a timer for 2 mins.\nNext Riley tried adding a high score.')
+    expect(single).toEqual(['Next Riley tried adding a high score.'])
+    const folded = 'We built a timer for 2 mins. Next Riley tried adding a high score.'
+    expect(restoreParagraphs(folded, single)).toBe('We built a timer for 2 mins.\n\nNext Riley tried adding a high score.')
+  })
+
+  it('leaves text that already has its paragraphs alone', () => {
+    const ok = 'We built a timer.\n\nNext Riley tried adding a high score.'
+    expect(restoreParagraphs(ok, starts)).toBe(ok)
+  })
+})
+
+describe('invented sentences from the lesson facts', () => {
+  const f = ['Activity: "Todo App"', 'Concepts covered: functions and lists', 'Riley worked independently on functions and needed some support with lists.']
+
+  it('rejects a sentence about guidance that no fact mentions', () => {
+    const out = 'Our main activity was "Todo App". Riley worked independently on functions and needed some support with lists. With lists, Riley received some guidance.'
+    expect(checkPolish(out, f, [], undefined, 'Riley').join()).toMatch(/added a sentence that is not in the facts: "With lists, Riley received some guidance."/)
+  })
+
+  it('accepts a faithful restatement', () => {
+    const out = 'Our main activity was "Todo App". Riley worked independently on functions and needed some support with lists.'
+    expect(checkPolish(out, f, [], undefined, 'Riley')).toEqual([])
   })
 })
 

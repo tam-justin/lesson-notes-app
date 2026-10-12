@@ -124,7 +124,7 @@ export function NotePanel({
           edits[s.heading] = { text: result.text, baseline: s.generated }
           onChange({ noteEdits: { ...edits } })
         } else {
-          rejected.push({ heading: s.heading, reason: result.problems[0] ?? 'it failed the checks' })
+          rejected.push({ heading: s.heading, reason: result.problems.slice(0, 3).join('; ') || 'it failed the checks' })
         }
       }
       setKept(rejected)
