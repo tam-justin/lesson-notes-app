@@ -1,6 +1,7 @@
 import '@fontsource-variable/bricolage-grotesque'
 import '@fontsource-variable/figtree'
 import '@fontsource/jetbrains-mono/400.css'
+import { Analytics } from '@vercel/analytics/react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
@@ -15,5 +16,6 @@ createRoot(document.getElementById('root')!).render(
         <App />
       </StoreProvider>
     </ErrorBoundary>
+    <Analytics />
   </StrictMode>,
 )
